@@ -1,0 +1,405 @@
+/* Mobile-only layout layer.
+   Desktop is the reference layout: nothing in this file applies above 700px. */
+
+@media (max-width: 700px) {
+  body {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .game-shell {
+    width: 100%;
+    padding: 8px 6px 10px !important;
+  }
+
+  .topbar {
+    min-height: 50px;
+    align-items: center !important;
+    gap: 8px;
+  }
+
+  .topbar > div:first-child {
+    min-width: 0;
+  }
+
+  .eyebrow {
+    margin-bottom: 1px;
+    font-size: .55rem;
+    letter-spacing: .09em;
+    white-space: nowrap;
+  }
+
+  h1 {
+    font-size: 1.35rem;
+    white-space: nowrap;
+  }
+
+  .controls {
+    margin-left: auto;
+    flex-wrap: nowrap !important;
+    gap: 5px !important;
+  }
+
+  .controls label {
+    gap: 2px;
+    font-size: .5rem !important;
+    letter-spacing: .04em;
+  }
+
+  .controls select {
+    width: auto;
+    max-width: 104px !important;
+    min-height: 34px;
+    padding: 5px 6px !important;
+    border-radius: 8px;
+    font-size: .72rem;
+  }
+
+  .room-stage {
+    margin-top: 7px;
+    min-height: 600px !important;
+    border-radius: 18px !important;
+  }
+
+  .table {
+    inset: 2.5% 1.5% 1.5% !important;
+    border-width: 9px !important;
+    border-radius: 38% 38% 24% 24% / 22% 22% 16% 16% !important;
+  }
+
+  /* Opponents: keep their whole card cluster together and readable.
+     Coasters remain separate fixed anchors, as on desktop. */
+  .seat-left {
+    top: 7% !important;
+    left: 3% !important;
+  }
+
+  .seat-right {
+    top: 7% !important;
+    right: 3% !important;
+  }
+
+  .opponent-beer-mat {
+    width: 54px !important;
+    height: 54px !important;
+    margin-bottom: 5px !important;
+  }
+
+  .seat-left .opponent-beer-mat {
+    transform: translate(42px, -4px) rotate(-4deg) !important;
+  }
+
+  .seat-right .opponent-beer-mat {
+    transform: translate(-42px, -4px) rotate(4deg) !important;
+  }
+
+  .opponent-beer-mat .beer-mat-drink {
+    right: -10px !important;
+    bottom: -2px !important;
+    font-size: 1rem;
+  }
+
+  .opponent-card-cluster {
+    gap: 7px !important;
+  }
+
+  .seat-left .opponent-card-cluster {
+    transform: translate(-42px, -12px) rotate(-22deg) !important;
+  }
+
+  .seat-right .opponent-card-cluster {
+    transform: translate(42px, -12px) rotate(22deg) !important;
+  }
+
+  .seat-left .opponent-hand-count {
+    transform: rotate(22deg) !important;
+  }
+
+  .seat-right .opponent-hand-count {
+    transform: rotate(-22deg) !important;
+  }
+
+  .compact-opponent-hand {
+    width: 76px !important;
+    min-width: 76px !important;
+  }
+
+  .compact-opponent-hand .card {
+    flex-basis: 36px !important;
+    width: 36px !important;
+    margin-left: -27px !important;
+  }
+
+  .opponent-hand-count {
+    min-width: 25px;
+    padding: 3px 6px;
+    font-size: .66rem;
+  }
+
+  /* Do not let older mobile rules collapse the visible table cards to 39px. */
+  .seat-opponent .face-row {
+    gap: 5px !important;
+  }
+
+  .seat-opponent .face-row .face-stack {
+    width: 48px !important;
+    height: 67px !important;
+  }
+
+  .seat-opponent .face-row .face-stack > .card {
+    width: 48px !important;
+    height: 67px !important;
+    min-height: 0 !important;
+  }
+
+  .seat-opponent .face-row .face-stack > .card:not(.card-back) {
+    padding: 6px 5px !important;
+    font-size: .92rem !important;
+  }
+
+  /* Shared piles stay comfortably tappable and occupy the quiet centre area. */
+  .centre-zone {
+    top: 40% !important;
+    gap: 24px !important;
+  }
+
+  .centre-zone::before {
+    inset: -17px -20px !important;
+  }
+
+  .pile,
+  .pile .card {
+    width: 58px !important;
+    min-height: 82px !important;
+  }
+
+  .pile-count {
+    min-width: 25px;
+    right: -8px;
+    bottom: -6px;
+    padding: 3px 6px;
+  }
+
+  /* Local player owns the lower portion of the screen. */
+  .seat-player {
+    bottom: 0 !important;
+    width: 100% !important;
+  }
+
+  .self-beer-mat {
+    width: 66px !important;
+    height: 66px !important;
+  }
+
+  .self-table-zone {
+    gap: 4px !important;
+  }
+
+  .self-face-row {
+    min-height: 76px !important;
+    gap: 6px !important;
+  }
+
+  .self-face-row .face-stack {
+    width: 54px !important;
+    height: 76px !important;
+  }
+
+  .self-face-row .face-stack > .card {
+    width: 54px !important;
+    height: 76px !important;
+  }
+
+  .hand-tools {
+    margin-bottom: 0 !important;
+  }
+
+  .hand {
+    width: 100%;
+    min-height: 112px !important;
+    padding: 18px 10px 0 !important;
+    justify-content: center !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+  }
+
+  .hand button.card {
+    flex: 0 0 62px !important;
+    width: 62px !important;
+    margin-left: -8px !important;
+    font-size: 1.25rem !important;
+    transform: rotate(calc((var(--card-index) - var(--card-mid)) * 1.3deg)) !important;
+    scroll-snap-align: none !important;
+  }
+
+  .hand button.card:first-child {
+    margin-left: 0 !important;
+  }
+
+  .hand button.card.selected {
+    transform: translateY(-13px) rotate(0deg) scale(1.03) !important;
+  }
+
+  .play-actions {
+    min-height: 38px !important;
+    margin: 2px 0 3px !important;
+  }
+
+  .play-selected {
+    min-height: 38px;
+    padding: 7px 14px !important;
+    font-size: .78rem;
+  }
+
+  .statusbar {
+    min-height: 36px !important;
+    margin-top: 6px !important;
+    gap: 7px !important;
+    font-size: .72rem !important;
+  }
+
+  .statusbar button {
+    min-height: 36px;
+    padding: 6px 9px;
+    white-space: nowrap;
+  }
+
+  .ticker-item {
+    max-width: 180px !important;
+    font-size: .62rem !important;
+  }
+}
+
+/* Landscape phone is the preferred mobile game view: use the extra width to
+   reproduce the desktop table composition while keeping a shallow footprint. */
+@media (max-width: 700px) and (orientation: landscape) {
+  .game-shell {
+    padding-top: 4px !important;
+  }
+
+  .topbar {
+    min-height: 38px;
+  }
+
+  .eyebrow {
+    display: none;
+  }
+
+  h1 {
+    font-size: 1.1rem;
+  }
+
+  .controls label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .controls select {
+    min-height: 30px;
+  }
+
+  .room-stage {
+    margin-top: 3px;
+    min-height: 430px !important;
+  }
+
+  .table {
+    inset: 2% 1.5% 1% !important;
+    border-width: 8px !important;
+    border-radius: 44% 44% 30% 30% / 34% 34% 22% 22% !important;
+  }
+
+  .seat-left,
+  .seat-right {
+    top: 5% !important;
+  }
+
+  .opponent-beer-mat {
+    width: 50px !important;
+    height: 50px !important;
+  }
+
+  .seat-left .opponent-beer-mat {
+    transform: translate(58px, -5px) rotate(-4deg) !important;
+  }
+
+  .seat-right .opponent-beer-mat {
+    transform: translate(-58px, -5px) rotate(4deg) !important;
+  }
+
+  .seat-left .opponent-card-cluster {
+    transform: translate(-58px, -24px) rotate(-25deg) !important;
+  }
+
+  .seat-right .opponent-card-cluster {
+    transform: translate(58px, -24px) rotate(25deg) !important;
+  }
+
+  .seat-left .opponent-hand-count {
+    transform: rotate(25deg) !important;
+  }
+
+  .seat-right .opponent-hand-count {
+    transform: rotate(-25deg) !important;
+  }
+
+  .seat-opponent .face-row .face-stack,
+  .seat-opponent .face-row .face-stack > .card {
+    width: 46px !important;
+    height: 64px !important;
+  }
+
+  .centre-zone {
+    top: 39% !important;
+    gap: 30px !important;
+  }
+
+  .pile,
+  .pile .card {
+    width: 55px !important;
+    min-height: 78px !important;
+  }
+
+  .self-beer-mat {
+    width: 55px !important;
+    height: 55px !important;
+  }
+
+  .self-face-row {
+    min-height: 64px !important;
+  }
+
+  .self-face-row .face-stack,
+  .self-face-row .face-stack > .card {
+    width: 47px !important;
+    height: 66px !important;
+  }
+
+  .hand {
+    min-height: 88px !important;
+    padding-top: 10px !important;
+  }
+
+  .hand button.card {
+    flex-basis: 56px !important;
+    width: 56px !important;
+    margin-left: -7px !important;
+    font-size: 1.12rem !important;
+  }
+
+  .play-actions {
+    min-height: 32px !important;
+    margin: 0 !important;
+  }
+
+  .play-selected {
+    min-height: 32px;
+    padding: 5px 12px !important;
+  }
+
+  .statusbar {
+    min-height: 30px !important;
+    margin-top: 3px !important;
+  }
+}
