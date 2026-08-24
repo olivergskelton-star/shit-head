@@ -18,9 +18,7 @@
     gap: 8px;
   }
 
-  .topbar > div:first-child {
-    min-width: 0;
-  }
+  .topbar > div:first-child { min-width: 0; }
 
   .eyebrow {
     margin-bottom: 1px;
@@ -67,8 +65,6 @@
     border-radius: 38% 38% 24% 24% / 22% 22% 16% 16% !important;
   }
 
-  /* Opponents: keep their whole card cluster together and readable.
-     Coasters remain separate fixed anchors, as on desktop. */
   .seat-left {
     top: 7% !important;
     left: 3% !important;
@@ -99,9 +95,7 @@
     font-size: 1rem;
   }
 
-  .opponent-card-cluster {
-    gap: 7px !important;
-  }
+  .opponent-card-cluster { gap: 7px !important; }
 
   .seat-left .opponent-card-cluster {
     transform: translate(-42px, -12px) rotate(-22deg) !important;
@@ -111,13 +105,8 @@
     transform: translate(42px, -12px) rotate(22deg) !important;
   }
 
-  .seat-left .opponent-hand-count {
-    transform: rotate(22deg) !important;
-  }
-
-  .seat-right .opponent-hand-count {
-    transform: rotate(-22deg) !important;
-  }
+  .seat-left .opponent-hand-count { transform: rotate(22deg) !important; }
+  .seat-right .opponent-hand-count { transform: rotate(-22deg) !important; }
 
   .compact-opponent-hand {
     width: 76px !important;
@@ -136,10 +125,7 @@
     font-size: .66rem;
   }
 
-  /* Do not let older mobile rules collapse the visible table cards to 39px. */
-  .seat-opponent .face-row {
-    gap: 5px !important;
-  }
+  .seat-opponent .face-row { gap: 5px !important; }
 
   .seat-opponent .face-row .face-stack {
     width: 48px !important;
@@ -157,15 +143,12 @@
     font-size: .92rem !important;
   }
 
-  /* Shared piles stay comfortably tappable and occupy the quiet centre area. */
   .centre-zone {
     top: 40% !important;
     gap: 24px !important;
   }
 
-  .centre-zone::before {
-    inset: -17px -20px !important;
-  }
+  .centre-zone::before { inset: -17px -20px !important; }
 
   .pile,
   .pile .card {
@@ -180,7 +163,6 @@
     padding: 3px 6px;
   }
 
-  /* Local player owns the lower portion of the screen. */
   .seat-player {
     bottom: 0 !important;
     width: 100% !important;
@@ -191,9 +173,7 @@
     height: 66px !important;
   }
 
-  .self-table-zone {
-    gap: 4px !important;
-  }
+  .self-table-zone { gap: 4px !important; }
 
   .self-face-row {
     min-height: 76px !important;
@@ -210,9 +190,7 @@
     height: 76px !important;
   }
 
-  .hand-tools {
-    margin-bottom: 0 !important;
-  }
+  .hand-tools { margin-bottom: 0 !important; }
 
   .hand {
     width: 100%;
@@ -232,13 +210,8 @@
     scroll-snap-align: none !important;
   }
 
-  .hand button.card:first-child {
-    margin-left: 0 !important;
-  }
-
-  .hand button.card.selected {
-    transform: translateY(-13px) rotate(0deg) scale(1.03) !important;
-  }
+  .hand button.card:first-child { margin-left: 0 !important; }
+  .hand button.card.selected { transform: translateY(-13px) rotate(0deg) scale(1.03) !important; }
 
   .play-actions {
     min-height: 38px !important;
@@ -270,44 +243,16 @@
   }
 }
 
-/* Landscape phone is the preferred mobile game view: use the extra width to
-   reproduce the desktop table composition while keeping a shallow footprint. */
-@media (max-width: 700px) and (orientation: landscape) {
-  .game-shell {
-    padding-top: 4px !important;
-  }
-
-  .topbar {
-    min-height: 38px;
-  }
-
-  .eyebrow {
-    display: none;
-  }
-
-  h1 {
-    font-size: 1.1rem;
-  }
-
-  .controls label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .controls select {
-    min-height: 30px;
-  }
-
+/* Portrait phones need their own vertical composition. Keep desktop and
+   landscape untouched; this pass is based on the iPhone Safari screenshot. */
+@media (max-width: 700px) and (orientation: portrait) {
   .room-stage {
-    margin-top: 3px;
-    min-height: 430px !important;
+    min-height: 560px !important;
   }
 
   .table {
-    inset: 2% 1.5% 1% !important;
-    border-width: 8px !important;
-    border-radius: 44% 44% 30% 30% / 34% 34% 22% 22% !important;
+    inset: 1.5% 1.5% 1.5% !important;
+    border-radius: 36% 36% 22% 22% / 18% 18% 14% 14% !important;
   }
 
   .seat-left,
@@ -321,28 +266,125 @@
   }
 
   .seat-left .opponent-beer-mat {
-    transform: translate(58px, -5px) rotate(-4deg) !important;
+    transform: translate(38px, -5px) rotate(-4deg) !important;
   }
 
   .seat-right .opponent-beer-mat {
-    transform: translate(-58px, -5px) rotate(4deg) !important;
+    transform: translate(-38px, -5px) rotate(4deg) !important;
   }
 
   .seat-left .opponent-card-cluster {
-    transform: translate(-58px, -24px) rotate(-25deg) !important;
+    transform: translate(-48px, -28px) rotate(-22deg) !important;
   }
 
   .seat-right .opponent-card-cluster {
-    transform: translate(58px, -24px) rotate(25deg) !important;
+    transform: translate(48px, -28px) rotate(22deg) !important;
   }
 
-  .seat-left .opponent-hand-count {
-    transform: rotate(25deg) !important;
+  .seat-opponent .face-row .face-stack,
+  .seat-opponent .face-row .face-stack > .card {
+    width: 44px !important;
+    height: 62px !important;
   }
 
-  .seat-right .opponent-hand-count {
-    transform: rotate(-25deg) !important;
+  .seat-opponent .face-row .face-stack > .card:not(.card-back) {
+    font-size: .86rem !important;
   }
+
+  .centre-zone {
+    top: 33% !important;
+    gap: 22px !important;
+  }
+
+  .pile,
+  .pile .card {
+    width: 54px !important;
+    min-height: 76px !important;
+  }
+
+  .seat-player {
+    bottom: 3% !important;
+  }
+
+  .self-beer-mat {
+    width: 58px !important;
+    height: 58px !important;
+  }
+
+  .self-face-row {
+    min-height: 68px !important;
+  }
+
+  .self-face-row .face-stack,
+  .self-face-row .face-stack > .card {
+    width: 50px !important;
+    height: 70px !important;
+  }
+
+  .play-actions {
+    min-height: 34px !important;
+    margin: 0 0 1px !important;
+  }
+
+  .play-selected {
+    min-height: 34px !important;
+    padding: 5px 12px !important;
+  }
+
+  .hand {
+    min-height: 92px !important;
+    padding: 7px 8px 0 !important;
+  }
+
+  .hand button.card {
+    flex-basis: 58px !important;
+    width: 58px !important;
+    margin-left: -8px !important;
+    font-size: 1.15rem !important;
+  }
+}
+
+/* Landscape phone is the preferred mobile game view: use the extra width to
+   reproduce the desktop table composition while keeping a shallow footprint. */
+@media (max-width: 700px) and (orientation: landscape) {
+  .game-shell { padding-top: 4px !important; }
+  .topbar { min-height: 38px; }
+  .eyebrow { display: none; }
+  h1 { font-size: 1.1rem; }
+
+  .controls label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .controls select { min-height: 30px; }
+
+  .room-stage {
+    margin-top: 3px;
+    min-height: 430px !important;
+  }
+
+  .table {
+    inset: 2% 1.5% 1% !important;
+    border-width: 8px !important;
+    border-radius: 44% 44% 30% 30% / 34% 34% 22% 22% !important;
+  }
+
+  .seat-left,
+  .seat-right { top: 5% !important; }
+
+  .opponent-beer-mat {
+    width: 50px !important;
+    height: 50px !important;
+  }
+
+  .seat-left .opponent-beer-mat { transform: translate(58px, -5px) rotate(-4deg) !important; }
+  .seat-right .opponent-beer-mat { transform: translate(-58px, -5px) rotate(4deg) !important; }
+  .seat-left .opponent-card-cluster { transform: translate(-58px, -24px) rotate(-25deg) !important; }
+  .seat-right .opponent-card-cluster { transform: translate(58px, -24px) rotate(25deg) !important; }
+  .seat-left .opponent-hand-count { transform: rotate(25deg) !important; }
+  .seat-right .opponent-hand-count { transform: rotate(-25deg) !important; }
 
   .seat-opponent .face-row .face-stack,
   .seat-opponent .face-row .face-stack > .card {
@@ -366,9 +408,7 @@
     height: 55px !important;
   }
 
-  .self-face-row {
-    min-height: 64px !important;
-  }
+  .self-face-row { min-height: 64px !important; }
 
   .self-face-row .face-stack,
   .self-face-row .face-stack > .card {
