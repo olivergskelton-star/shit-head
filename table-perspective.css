@@ -1,0 +1,136 @@
+/* Physical-table perspective pass: coasters sit on the felt and opponent cards face their seats. */
+
+/* Better beer mat surface: layered paper/cardboard, printed rim and subtle wear. */
+.beer-mat {
+  background:
+    radial-gradient(circle at 38% 30%, rgba(255,255,255,.5) 0 2%, transparent 2.5%),
+    radial-gradient(circle at 65% 62%, rgba(95,67,37,.09) 0 1.2%, transparent 1.7%),
+    radial-gradient(circle at 50% 48%, rgba(246,239,215,.98) 0 57%, transparent 57.5%),
+    radial-gradient(circle at 50% 50%, #d9c69c 0 69%, #ad8d59 70% 77%, #64492e 78% 100%);
+  box-shadow:
+    0 7px 12px rgba(0,0,0,.3),
+    inset 0 0 0 1px rgba(255,255,255,.5),
+    inset 0 0 0 5px rgba(98,67,34,.08);
+}
+
+.beer-mat::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(77,50,25,.28);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.beer-mat::after {
+  inset: 12px;
+  border-style: dotted;
+  opacity: .8;
+}
+
+.beer-mat-label { display: none !important; }
+
+.beer-mat-name-ring.circular-name {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.beer-mat-name-ring.circular-name text {
+  font-size: 9.4px;
+  font-weight: 900;
+  letter-spacing: .55px;
+  fill: #2a1d12;
+}
+
+.beer-mat-name-ring.circular-name.long-name text {
+  font-size: 8.3px;
+  letter-spacing: .32px;
+}
+
+.beer-mat-name-ring.circular-name.very-long-name text {
+  font-size: 7.3px;
+  letter-spacing: .12px;
+}
+
+.self-beer-mat .beer-mat-name-ring.circular-name text { font-size: 9.8px; }
+.self-beer-mat .beer-mat-name-ring.circular-name.long-name text { font-size: 8.7px; }
+.self-beer-mat .beer-mat-name-ring.circular-name.very-long-name text { font-size: 7.7px; }
+.opponent-beer-mat .beer-mat-name-ring.circular-name text { font-size: 8.6px; }
+.opponent-beer-mat .beer-mat-name-ring.circular-name.long-name text { font-size: 7.6px; }
+.opponent-beer-mat .beer-mat-name-ring.circular-name.very-long-name text { font-size: 6.8px; }
+
+/* Opponent seats now live inside the felt rather than hugging the stage edge. */
+.seat-left {
+  top: 12%;
+  left: 10%;
+  transform: rotate(0deg);
+  transform-origin: center;
+}
+
+.seat-right {
+  top: 12%;
+  right: 10%;
+  transform: rotate(0deg);
+  transform-origin: center;
+}
+
+.opponent-beer-mat {
+  width: 78px;
+  height: 78px;
+  margin-bottom: 12px;
+}
+
+.seat-left .opponent-beer-mat { transform: rotate(-13deg) scaleY(.94); }
+.seat-right .opponent-beer-mat { transform: rotate(13deg) scaleY(.94); }
+
+/* Their held cards and table cards are physically oriented toward where they sit. */
+.seat-left .opponent-hand-wrap,
+.seat-left .face-row {
+  transform: rotate(154deg) skewX(-5deg) scaleY(.88);
+  transform-origin: center;
+}
+
+.seat-right .opponent-hand-wrap,
+.seat-right .face-row {
+  transform: rotate(-154deg) skewX(5deg) scaleY(.88);
+  transform-origin: center;
+}
+
+.seat-left .face-row,
+.seat-right .face-row {
+  margin-top: 3px;
+}
+
+/* Keep the count badge readable to the local viewer even though the hand itself faces the opponent. */
+.seat-left .opponent-hand-count {
+  transform: rotate(-154deg) skewX(5deg) scaleY(1.14);
+}
+
+.seat-right .opponent-hand-count {
+  transform: rotate(154deg) skewX(-5deg) scaleY(1.14);
+}
+
+/* Drinks feel like glasses sitting just outside the coaster edge. */
+.opponent-beer-mat .beer-mat-drink {
+  right: -13px;
+  bottom: -2px;
+  top: auto;
+}
+
+@media (max-height: 760px) and (min-width: 701px) {
+  .seat-left, .seat-right { top: 10%; }
+  .seat-left { left: 8%; }
+  .seat-right { right: 8%; }
+  .opponent-beer-mat { width: 70px; height: 70px; }
+}
+
+@media (max-width: 700px) {
+  .seat-left { top: 9%; left: 5%; }
+  .seat-right { top: 9%; right: 5%; }
+  .opponent-beer-mat { width: 58px; height: 58px; }
+  .seat-left .opponent-hand-wrap,
+  .seat-left .face-row { transform: rotate(150deg) skewX(-4deg) scale(.88,.8); }
+  .seat-right .opponent-hand-wrap,
+  .seat-right .face-row { transform: rotate(-150deg) skewX(4deg) scale(.88,.8); }
+}
