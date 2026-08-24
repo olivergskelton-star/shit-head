@@ -1,10 +1,43 @@
 /* Kitchen table layout: centre piles, table cards and held hand are independent layers. */
 
-/* The player's hand is allowed to extend beyond the room frame. Reserve
-   physical space beneath the table so it remains fully visible. */
+/* SINGLE-SCREEN CONTRACT --------------------------------------------------
+   The entire game must fit inside one browser viewport. The lower portion of
+   the room is deliberately reserved as a foreground strip for the held hand;
+   nothing is allowed to extend the document height. */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.game-shell {
+  height: 100vh;
+  max-height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  overflow: hidden;
+}
+
 .room-stage {
-  overflow: visible;
-  margin-bottom: 118px;
+  min-height: 0;
+  height: 100%;
+  margin-top: 4px;
+  margin-bottom: 0;
+  overflow: hidden;
+}
+
+/* Lift the physical table to create a built-in foreground area beneath the
+   near rail. The hand can hang over the table edge without hanging off-page. */
+.table {
+  inset: 6% 5% 15%;
+}
+
+.statusbar {
+  margin-top: 0;
+  min-height: 40px;
 }
 
 /* Centre of table belongs only to draw/discard piles. */
@@ -39,7 +72,7 @@
 .self-table-zone {
   position: absolute;
   left: 50%;
-  bottom: 25%;
+  bottom: 23%;
   transform: translateX(-50%);
   display: grid;
   justify-items: center;
@@ -66,13 +99,14 @@
   white-space: nowrap;
 }
 
-/* The hand is a foreground object, physically hanging over the near rail. */
+/* The hand is a foreground object: it crosses the near rail but remains
+   completely inside the room-stage's reserved lower strip. */
 .hand {
   position: absolute;
   left: 50%;
-  bottom: -34px;
+  bottom: -76px;
   transform: translateX(-50%);
-  min-height: 154px;
+  min-height: 150px;
   width: min(760px, 92%);
   padding: 16px 54px 0;
   display: flex;
@@ -86,10 +120,10 @@
 
 .hand button.card {
   appearance: none;
-  width: clamp(90px, 8.2vw, 106px);
-  flex: 0 0 clamp(90px, 8.2vw, 106px);
-  min-height: 130px;
-  margin-left: clamp(-46px, -3.4vw, -36px);
+  width: clamp(88px, 8vw, 104px);
+  flex: 0 0 clamp(88px, 8vw, 104px);
+  min-height: 126px;
+  margin-left: clamp(-44px, -3.3vw, -35px);
   padding: 10px 8px;
   display: flex;
   align-items: flex-start;
@@ -131,14 +165,14 @@
   z-index: 160;
 }
 
-/* Player controls live below the cards, not on the playing surface. */
+/* Keep actions inside the foreground strip as well. */
 .play-actions {
   position: absolute;
   left: 50%;
-  bottom: -83px;
+  bottom: -112px;
   transform: translateX(-50%);
   z-index: 170;
-  min-height: 42px;
+  min-height: 36px;
   margin: 0;
   white-space: nowrap;
 }
@@ -146,7 +180,7 @@
 .self-nameplate {
   position: absolute;
   left: 50%;
-  bottom: -112px;
+  bottom: -34px;
   transform: translateX(-50%);
   z-index: 171;
   margin: 0;
@@ -174,15 +208,42 @@ body[data-theme="kitchen"] .room-stage {
     rgba(0,0,0,.17);
 }
 
+/* Short desktop/laptop screens need a slightly tighter table while preserving
+   the three spatial zones. */
+@media (max-height: 760px) and (min-width: 701px) {
+  .game-shell { padding-top: 6px; padding-bottom: 6px; }
+  .topbar h1 { font-size: 1.9rem; }
+  .eyebrow { font-size: .68rem; }
+  .table { inset: 4% 5% 17%; }
+  .centre-zone { top: 40%; }
+  .self-table-zone { bottom: 22%; }
+  .hand { bottom: -68px; transform: translateX(-50%) scale(.9); transform-origin: center top; }
+}
+
 @media (max-width: 700px) {
-  .room-stage { margin-bottom: 104px; }
+  html, body { overflow: hidden; }
+
+  .game-shell {
+    padding: 6px 8px;
+    gap: 5px;
+  }
+
+  .room-stage {
+    min-height: 0;
+    height: 100%;
+    margin: 0;
+  }
+
+  .table {
+    inset: 4% 2.5% 18%;
+  }
 
   .centre-zone {
     top: 39%;
     gap: 28px;
   }
 
-  .self-table-zone { bottom: 27%; }
+  .self-table-zone { bottom: 25%; }
 
   .self-face-row {
     min-height: 76px;
@@ -197,16 +258,16 @@ body[data-theme="kitchen"] .room-stage {
   .self-face-row .card { width: 54px; }
 
   .hand {
-    bottom: -28px;
+    bottom: -68px;
     width: 98%;
-    min-height: 136px;
+    min-height: 132px;
     padding: 18px 24px 0;
   }
 
   .hand button.card {
-    width: 78px;
-    flex-basis: 78px;
-    min-height: 112px;
+    width: 76px;
+    flex-basis: 76px;
+    min-height: 108px;
     margin-left: -34px;
     font-size: 1.3rem;
     transform: rotate(calc((var(--card-index) - var(--card-mid)) * 4.8deg));
@@ -214,6 +275,7 @@ body[data-theme="kitchen"] .room-stage {
 
   .hand button.card:first-child { margin-left: 0; }
 
-  .play-actions { bottom: -72px; }
-  .self-nameplate { bottom: -99px; }
+  .play-actions { bottom: -104px; }
+  .self-nameplate { bottom: -30px; }
+  .statusbar { min-height: 34px; font-size: .8rem; }
 }
