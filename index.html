@@ -42,6 +42,7 @@
   <link rel="stylesheet" href="card-corners.css?v=20260824-1833" />
   <link rel="stylesheet" href="mobile-layout.css?v=20260824-1833" />
   <link rel="stylesheet" href="mobile-portrait-polish.css?v=20260824-1833" />
+  <link rel="stylesheet" href="how-to-play.css?v=20260824-2148" />
 </head>
 <body data-theme="kitchen">
   <main class="game-shell">
@@ -51,6 +52,10 @@
         <h1>Shit Head</h1>
       </div>
       <div class="controls">
+        <button id="howToPlayBtn" class="how-to-play-trigger" type="button" aria-haspopup="dialog" aria-controls="howToPlayDialog">
+          <span class="how-to-play-trigger-icon" aria-hidden="true">?</span>
+          <span class="how-to-play-trigger-text">How to play</span>
+        </button>
         <label>
           Venue
           <select id="themeSelect">
@@ -96,6 +101,90 @@
     </footer>
   </main>
 
+  <dialog id="howToPlayDialog" class="how-to-play-dialog" aria-labelledby="howToPlayTitle">
+    <article class="how-to-play-sheet">
+      <header class="how-to-play-header">
+        <div>
+          <p class="how-to-play-eyebrow">The house rules</p>
+          <h2 id="howToPlayTitle">How to play Shit Head</h2>
+        </div>
+        <button id="closeHowToPlayBtn" class="how-to-play-close" type="button" aria-label="Close how to play">&times;</button>
+      </header>
+
+      <div class="how-to-play-content">
+        <p class="how-to-play-objective"><strong>Get rid of every card.</strong> First player out wins. The last player left holding cards is the Shit Head.</p>
+
+        <ol class="how-to-play-steps">
+          <li>
+            <span class="how-to-play-step-number">1</span>
+            <div>
+              <h3>Set your table</h3>
+              <p>You start with 3 face-down cards, 3 face-up table cards and 4 cards in your hand. Swap hand cards with face-up cards until you are happy, then press <strong>READY</strong>.</p>
+            </div>
+          </li>
+          <li>
+            <span class="how-to-play-step-number">2</span>
+            <div>
+              <h3>Start low</h3>
+              <p>The player holding the lowest-ranked hand card starts. House order begins 4, 5, 6, 7, 8, 9, J, Q, K, A, then 2, 3, 10. READY order breaks a tie.</p>
+            </div>
+          </li>
+          <li>
+            <span class="how-to-play-step-number">3</span>
+            <div>
+              <h3>Play equal or higher</h3>
+              <p>Play one card, or several cards of the same rank, equal to or higher than the live card on the pile. If another matching card is available, add it or press <strong>FINISH TURN</strong>.</p>
+            </div>
+          </li>
+          <li>
+            <span class="how-to-play-step-number">4</span>
+            <div>
+              <h3>Draw or pick up</h3>
+              <p>While the draw pile remains, refill your hand to at least 3 cards. If you cannot play—or choose not to—press <strong>PICK UP</strong> to take the whole pile.</p>
+            </div>
+          </li>
+          <li>
+            <span class="how-to-play-step-number">5</span>
+            <div>
+              <h3>Finish the table</h3>
+              <p>Once the draw pile is gone, empty your hand, then play your 3 face-up cards, and finally turn over your face-down cards blind. If one cannot play, take it and the pile.</p>
+            </div>
+          </li>
+        </ol>
+
+        <section class="special-rules" aria-labelledby="specialCardsTitle">
+          <h3 id="specialCardsTitle">Special cards</h3>
+          <div class="special-rules-grid">
+            <div class="special-rule">
+              <span class="rule-card">2</span>
+              <p><strong>Reset</strong><br />Play it on anything. The next player may play anything.</p>
+            </div>
+            <div class="special-rule">
+              <span class="rule-card red">3</span>
+              <p><strong>Transparent</strong><br />Play it on anything. The last non-3 card underneath stays live.</p>
+            </div>
+            <div class="special-rule">
+              <span class="rule-card">7</span>
+              <p><strong>Low</strong><br />The next player must play a 7 or lower.</p>
+            </div>
+            <div class="special-rule">
+              <span class="rule-card red">10</span>
+              <p><strong>Burn</strong><br />Clear the pile into the burn stack and play again.</p>
+            </div>
+            <div class="special-rule special-rule-wide">
+              <span class="rule-card rule-card-combo">4&times;</span>
+              <p><strong>Four of a kind burns</strong><br />Four matching ranks in a row clear the pile. Three 8s also burn it.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <footer class="how-to-play-footer">
+        <button id="gotItBtn" type="button">Got it — back to the table</button>
+      </footer>
+    </article>
+  </dialog>
+
   <script src="app.js?v=20260824-1833"></script>
   <script src="engine-v2.js?v=20260824-1833"></script>
   <script src="setup-phase.js?v=20260824-1833"></script>
@@ -104,5 +193,6 @@
   <script src="opening-rule.js?v=20260824-1833"></script>
   <script src="game-ticker.js?v=20260824-1833"></script>
   <script src="coaster-names.js?v=20260824-1833"></script>
+  <script src="how-to-play.js?v=20260824-2148"></script>
 </body>
 </html>
