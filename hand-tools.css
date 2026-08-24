@@ -1,0 +1,73 @@
+/* Hand sorting + large pickup handling. */
+.sort-hand {
+  position: absolute;
+  left: calc(50% - 245px);
+  bottom: 8.5%;
+  z-index: 176;
+  min-height: 34px;
+  border: 1px solid rgba(255,255,255,.46);
+  border-radius: 999px;
+  background: rgba(0,0,0,.52);
+  color: #fff;
+  padding: 6px 11px;
+  font-size: .7rem;
+  font-weight: 900;
+  letter-spacing: .07em;
+  cursor: pointer;
+}
+
+.sort-hand:hover,
+.sort-hand:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* Keep rank/suit corners readable as pickup hands get silly. */
+.hand.hand-many button.card {
+  width: 92px;
+  flex-basis: 92px;
+  margin-left: -56px;
+  transform: rotate(calc((var(--card-index) - var(--card-mid)) * 3.2deg));
+}
+
+.hand.hand-large button.card {
+  width: 88px;
+  flex-basis: 88px;
+  margin-left: -65px;
+  transform: rotate(calc((var(--card-index) - var(--card-mid)) * 1.7deg));
+}
+
+.hand.hand-huge {
+  width: min(980px, 96%);
+  padding-left: 30px;
+  padding-right: 30px;
+}
+
+.hand.hand-huge button.card {
+  width: 82px;
+  flex-basis: 82px;
+  min-height: 122px;
+  margin-left: -66px;
+  font-size: 1.35rem;
+  transform: rotate(calc((var(--card-index) - var(--card-mid)) * .75deg));
+}
+
+.hand.hand-many button.card:first-child,
+.hand.hand-large button.card:first-child,
+.hand.hand-huge button.card:first-child { margin-left: 0; }
+
+@media (max-width: 700px) {
+  .sort-hand {
+    left: 4%;
+    bottom: 11%;
+    font-size: .62rem;
+    padding: 5px 9px;
+  }
+
+  .hand.hand-huge button.card {
+    width: 76px;
+    flex-basis: 76px;
+    margin-left: -63px;
+  }
+}
