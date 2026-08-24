@@ -87,12 +87,12 @@ function decorateSetupCards() {
     cardEl.disabled = ready;
   });
 
-  const tableCards = [...playerSeat.querySelectorAll(".self-face-row .face-stack")];
-  tableCards.forEach((stack, index) => {
+  const tableStacks = [...playerSeat.querySelectorAll(".self-face-row .face-stack")];
+  tableStacks.forEach((stack, index) => {
+    stack.dataset.setupZone = "table";
+    stack.dataset.setupIndex = index;
     const faceUp = stack.querySelector(".card:not(.card-back)");
     if (!faceUp) return;
-    faceUp.dataset.setupZone = "table";
-    faceUp.dataset.setupIndex = index;
     faceUp.classList.add("setup-table-card");
     faceUp.classList.toggle("setup-selected", !!state.setupSelection && state.setupSelection.zone === "table" && state.setupSelection.index === index);
   });
@@ -118,7 +118,7 @@ function renderSetupActions() {
   hint.className = "setup-hint";
   hint.textContent = state.setupReady[state.viewer]
     ? "Waiting for the others"
-    : "Swap any hand card with any face-up table card, then press READY";
+    : "Click a hand card, then click a face-up table card to swap. Repeat as needed, then press READY.";
   actions.append(hint);
 }
 
@@ -130,7 +130,7 @@ function renderSetupStatus() {
   } else if (state.setupReady[state.viewer]) {
     statusText.textContent = `Setup — ready${readyNames.length ? ` (${readyNames.join(", ")})` : ""}. Switch View As to prepare another player.`;
   } else {
-    statusText.textContent = "Setup — arrange your 3 face-up table cards, then press READY.";
+    statusText.textContent = "Setup — click a hand card, then a face-up table card to swap; press READY when happy.";
   }
 }
 
