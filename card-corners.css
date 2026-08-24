@@ -1,0 +1,19 @@
+/* Face-up table cards use the same top-left index treatment as held cards. */
+.face-row .card:not(.card-back) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+  padding: 9px 7px;
+  line-height: .92;
+  letter-spacing: -.035em;
+}
+
+.self-face-row .card:not(.card-back) {
+  font-size: clamp(1.3rem, 2.2vw, 1.7rem);
+}
+
+.seat-opponent .face-row .card:not(.card-back) {
+  padding: 7px 6px;
+  font-size: .95rem;
+}
