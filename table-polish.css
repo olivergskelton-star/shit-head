@@ -1,9 +1,5 @@
 /* Kitchen table layout: centre piles, table cards and held hand are independent layers. */
 
-/* SINGLE-SCREEN CONTRACT --------------------------------------------------
-   The entire game must fit inside one browser viewport. The lower portion of
-   the room is deliberately reserved as a foreground strip for the held hand;
-   nothing is allowed to extend the document height. */
 html,
 body {
   height: 100%;
@@ -29,18 +25,9 @@ body {
   overflow: hidden;
 }
 
-/* Lift the physical table to create a built-in foreground area beneath the
-   near rail. The hand can hang over the table edge without hanging off-page. */
-.table {
-  inset: 6% 5% 15%;
-}
+.table { inset: 6% 5% 15%; }
+.statusbar { margin-top: 0; min-height: 40px; }
 
-.statusbar {
-  margin-top: 0;
-  min-height: 40px;
-}
-
-/* Centre of table belongs only to draw/discard piles. */
 .centre-zone {
   left: 50%;
   top: 43%;
@@ -53,8 +40,6 @@ body {
   background: rgba(0,0,0,.055);
 }
 
-/* The viewer's seat spans the whole table so its elements can be positioned
-   independently instead of flowing into each other. */
 .seat-player {
   left: 0;
   right: 0;
@@ -68,11 +53,10 @@ body {
 
 .seat-player > * { pointer-events: auto; }
 
-/* Three face-up/face-down table stacks: deliberately below the centre piles. */
 .self-table-zone {
   position: absolute;
   left: 50%;
-  bottom: 23%;
+  bottom: 27%;
   transform: translateX(-50%);
   display: grid;
   justify-items: center;
@@ -99,8 +83,107 @@ body {
   white-space: nowrap;
 }
 
-/* The hand is a foreground object: it crosses the near rail but remains
-   completely inside the room-stage's reserved lower strip. */
+/* Identity sits in the quiet strip between table cards and the held hand. */
+.self-identity-row {
+  position: absolute;
+  left: 50%;
+  bottom: 11.5%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 95;
+  pointer-events: auto;
+}
+
+.self-nameplate {
+  position: static;
+  transform: none;
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* Beer mats -------------------------------------------------------------- */
+.beer-mat {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255,255,255,.9) 0 54%, transparent 55%),
+    radial-gradient(circle at 50% 50%, #d7c8a1 0 68%, #9e855a 69% 74%, #6c5434 75% 100%);
+  color: #2d2116;
+  box-shadow: 0 5px 12px rgba(0,0,0,.28), inset 0 0 0 2px rgba(255,255,255,.35);
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1;
+  user-select: none;
+}
+
+.beer-mat::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 1px dashed rgba(80,55,30,.28);
+  border-radius: 50%;
+}
+
+.beer-mat-drink {
+  position: absolute;
+  top: -18px;
+  right: -4px;
+  font-size: 1.8rem;
+  filter: drop-shadow(0 3px 3px rgba(0,0,0,.3));
+  z-index: 3;
+}
+
+.beer-mat-name {
+  font-size: .78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  z-index: 2;
+}
+
+.beer-mat-score {
+  font-size: 1.7rem;
+  font-weight: 900;
+  z-index: 2;
+}
+
+.beer-mat-label {
+  font-size: .58rem;
+  font-style: italic;
+  opacity: .72;
+  z-index: 2;
+}
+
+.opponent-beer-mat {
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 8px;
+  transform: rotate(-5deg);
+}
+
+.seat-right .opponent-beer-mat { transform: rotate(5deg); }
+.opponent-beer-mat .beer-mat-drink { top: -15px; font-size: 1.45rem; }
+.opponent-beer-mat .beer-mat-name { font-size: .64rem; }
+.opponent-beer-mat .beer-mat-score { font-size: 1.35rem; }
+.opponent-beer-mat .beer-mat-label { font-size: .48rem; }
+
+.self-beer-mat {
+  width: 68px;
+  height: 68px;
+  transform: rotate(4deg);
+}
+
+.self-beer-mat .beer-mat-drink { font-size: 1.55rem; top: -16px; }
+.self-beer-mat .beer-mat-score { font-size: 1.45rem; }
+
+/* Held hand -------------------------------------------------------------- */
 .hand {
   position: absolute;
   left: 50%;
@@ -165,7 +248,6 @@ body {
   z-index: 160;
 }
 
-/* Keep actions inside the foreground strip as well. */
 .play-actions {
   position: absolute;
   left: 50%;
@@ -177,17 +259,6 @@ body {
   white-space: nowrap;
 }
 
-.self-nameplate {
-  position: absolute;
-  left: 50%;
-  bottom: -34px;
-  transform: translateX(-50%);
-  z-index: 171;
-  margin: 0;
-  white-space: nowrap;
-}
-
-/* A subtle physical near edge, kept firmly behind the held cards. */
 .table::after {
   content: "";
   position: absolute;
@@ -208,15 +279,14 @@ body[data-theme="kitchen"] .room-stage {
     rgba(0,0,0,.17);
 }
 
-/* Short desktop/laptop screens need a slightly tighter table while preserving
-   the three spatial zones. */
 @media (max-height: 760px) and (min-width: 701px) {
   .game-shell { padding-top: 6px; padding-bottom: 6px; }
   .topbar h1 { font-size: 1.9rem; }
   .eyebrow { font-size: .68rem; }
   .table { inset: 4% 5% 17%; }
   .centre-zone { top: 40%; }
-  .self-table-zone { bottom: 22%; }
+  .self-table-zone { bottom: 25%; }
+  .self-identity-row { bottom: 11%; transform: translateX(-50%) scale(.9); }
   .hand { bottom: -68px; transform: translateX(-50%) scale(.9); transform-origin: center top; }
 }
 
@@ -234,28 +304,27 @@ body[data-theme="kitchen"] .room-stage {
     margin: 0;
   }
 
-  .table {
-    inset: 4% 2.5% 18%;
-  }
+  .table { inset: 4% 2.5% 18%; }
+  .centre-zone { top: 39%; gap: 28px; }
+  .self-table-zone { bottom: 28%; }
 
-  .centre-zone {
-    top: 39%;
-    gap: 28px;
-  }
-
-  .self-table-zone { bottom: 25%; }
-
-  .self-face-row {
-    min-height: 76px;
-    gap: 9px;
-  }
-
-  .self-face-row .face-stack {
-    width: 54px;
-    height: 76px;
-  }
-
+  .self-face-row { min-height: 76px; gap: 9px; }
+  .self-face-row .face-stack { width: 54px; height: 76px; }
   .self-face-row .card { width: 54px; }
+
+  .self-identity-row {
+    bottom: 12%;
+    gap: 8px;
+    transform: translateX(-50%) scale(.82);
+  }
+
+  .opponent-beer-mat {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 5px;
+  }
+  .opponent-beer-mat .beer-mat-drink { font-size: 1.1rem; top: -11px; }
+  .opponent-beer-mat .beer-mat-label { display: none; }
 
   .hand {
     bottom: -68px;
@@ -274,8 +343,6 @@ body[data-theme="kitchen"] .room-stage {
   }
 
   .hand button.card:first-child { margin-left: 0; }
-
   .play-actions { bottom: -104px; }
-  .self-nameplate { bottom: -30px; }
   .statusbar { min-height: 34px; font-size: .8rem; }
 }
