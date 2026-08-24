@@ -2,60 +2,59 @@
 
 /* Keep the centre of the table reserved for the live piles. */
 .centre-zone {
-  top: 35%;
+  top: 28%;
   z-index: 4;
 }
 
 .centre-zone::before {
-  inset: -24px -34px;
-  background: rgba(0,0,0,.055);
+  inset: -22px -32px;
+  background: rgba(0,0,0,.05);
 }
 
-/* Table cards belong on the table; the hand belongs in front of the player. */
+/* Table cards belong between the centre piles and the player's held hand. */
 .self-table-zone {
   position: relative;
-  transform: translateY(-28px);
+  transform: translateY(18px);
   z-index: 6;
 }
 
 .self-face-row {
-  gap: 12px;
+  gap: 14px;
 }
 
 .seat-player {
-  bottom: -1.5%;
-  width: min(900px, 96%);
+  bottom: -7.5%;
+  width: min(940px, 98%);
   z-index: 10;
 }
 
-/* A hand of cards, not a row of buttons. The overlap deliberately leaves
-   the upper-left index of every card exposed. */
+/* A held fan: overlap deliberately leaves the upper-left index of every card exposed. */
 .hand {
   position: relative;
-  min-height: 142px;
-  padding: 20px 54px 0;
+  min-height: 150px;
+  padding: 18px 54px 0;
   gap: 0;
   overflow: visible;
-  transform: translateY(34px);
+  transform: translateY(58px);
   isolation: isolate;
 }
 
 .hand button.card {
-  width: clamp(82px, 8vw, 98px);
-  flex: 0 0 clamp(82px, 8vw, 98px);
-  min-height: 116px;
-  margin-left: clamp(-44px, -3.4vw, -34px);
+  width: clamp(86px, 8.2vw, 102px);
+  flex: 0 0 clamp(86px, 8.2vw, 102px);
+  min-height: 122px;
+  margin-left: clamp(-46px, -3.6vw, -36px);
   padding: 10px 8px;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
   text-align: left;
   line-height: .92;
-  font-size: clamp(1.28rem, 2.5vw, 1.8rem);
+  font-size: clamp(1.3rem, 2.5vw, 1.82rem);
   letter-spacing: -.04em;
   border-radius: 10px;
-  transform-origin: 50% 165%;
-  transform: rotate(calc((var(--card-index) - var(--card-mid)) * 4.2deg));
+  transform-origin: 50% 175%;
+  transform: rotate(calc((var(--card-index) - var(--card-mid)) * 5deg));
   box-shadow: 0 5px 12px rgba(0,0,0,.34);
 }
 
@@ -63,14 +62,13 @@
   margin-left: 0;
 }
 
-/* Give the exposed index a little card-like corner treatment. */
 .hand button.card::before {
   content: "";
   position: absolute;
   left: 6px;
   top: 6px;
-  width: 29px;
-  height: 34px;
+  width: 31px;
+  height: 36px;
   border-radius: 7px;
   background: rgba(255,255,255,.36);
   z-index: -1;
@@ -78,40 +76,41 @@
 
 .hand button.card:hover,
 .hand button.card:focus-visible {
-  transform: translateY(-16px) rotate(0deg) scale(1.04);
+  transform: translateY(-18px) rotate(0deg) scale(1.04);
   z-index: 80;
 }
 
 .hand button.card.selected {
-  transform: translateY(-28px) rotate(0deg) scale(1.055);
+  transform: translateY(-30px) rotate(0deg) scale(1.055);
   z-index: 90;
 }
 
-/* Controls should not occupy the table when nothing is selected. */
+/* Controls should appear below the held cards rather than on the playing surface. */
 .play-actions {
   position: relative;
   z-index: 100;
   min-height: 44px;
-  margin-top: 24px;
-  transform: translateY(15px);
+  margin-top: 48px;
+  transform: translateY(10px);
 }
 
 .self-nameplate {
   position: relative;
   z-index: 100;
-  transform: translateY(12px);
+  margin-top: 6px;
+  transform: translateY(8px);
 }
 
-/* Make the near rail read as a physical edge that the hand is hanging over. */
+/* Make the near rail read as a physical edge that the hand hangs over. */
 .table::after {
   content: "";
   position: absolute;
-  left: 12%;
-  right: 12%;
-  bottom: -13px;
-  height: 25px;
+  left: 10%;
+  right: 10%;
+  bottom: -15px;
+  height: 29px;
   border-radius: 0 0 999px 999px;
-  background: linear-gradient(to bottom, rgba(255,255,255,.035), rgba(0,0,0,.42));
+  background: linear-gradient(to bottom, rgba(255,255,255,.04), rgba(0,0,0,.48));
   pointer-events: none;
   z-index: 8;
 }
@@ -126,41 +125,41 @@ body[data-theme="kitchen"] .room-stage {
 
 @media (max-width: 700px) {
   .centre-zone {
-    top: 31%;
+    top: 25%;
   }
 
   .seat-player {
-    bottom: -2.5%;
+    bottom: -9%;
     width: 100%;
   }
 
   .self-table-zone {
-    transform: translateY(-18px);
+    transform: translateY(12px);
   }
 
   .hand {
-    min-height: 126px;
-    padding: 22px 28px 0;
+    min-height: 132px;
+    padding: 20px 28px 0;
     justify-content: center;
     overflow: visible;
-    transform: translateY(32px);
+    transform: translateY(52px);
   }
 
   .hand button.card {
-    width: 76px;
-    flex-basis: 76px;
-    min-height: 108px;
-    margin-left: -34px;
-    font-size: 1.28rem;
-    transform: rotate(calc((var(--card-index) - var(--card-mid)) * 4deg));
+    width: 78px;
+    flex-basis: 78px;
+    min-height: 112px;
+    margin-left: -36px;
+    font-size: 1.3rem;
+    transform: rotate(calc((var(--card-index) - var(--card-mid)) * 4.6deg));
   }
 
   .play-actions {
-    margin-top: 18px;
-    transform: translateY(10px);
+    margin-top: 42px;
+    transform: translateY(8px);
   }
 
   .self-nameplate {
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
 }
