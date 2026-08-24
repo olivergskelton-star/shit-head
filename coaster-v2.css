@@ -1,0 +1,165 @@
+/* Coaster identity v2 ---------------------------------------------------- */
+
+/* The coaster now carries the player identity by itself. */
+.self-identity-row {
+  position: absolute;
+  left: calc(50% + 205px);
+  bottom: 15%;
+  transform: none;
+  z-index: 96;
+}
+
+.self-nameplate { display: none !important; }
+
+.beer-mat {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  position: relative;
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255,252,237,.97) 0 55%, transparent 56%),
+    radial-gradient(circle at 50% 50%, #d9c79d 0 68%, #a88c5d 69% 75%, #695032 76% 100%);
+  color: #2b2015;
+  box-shadow: 0 7px 15px rgba(0,0,0,.3), inset 0 0 0 2px rgba(255,255,255,.38);
+  font-family: Georgia, "Times New Roman", serif;
+  user-select: none;
+}
+
+.beer-mat::after {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border: 1px dashed rgba(76,51,27,.26);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.beer-mat-name-ring {
+  position: absolute;
+  inset: 2px;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  overflow: visible;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.beer-mat-name-ring text {
+  fill: #2b2015;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .7px;
+  text-transform: uppercase;
+}
+
+.beer-mat-score {
+  position: relative;
+  z-index: 3;
+  margin-top: 6px;
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.beer-mat-drink {
+  position: absolute;
+  right: -10px;
+  bottom: -2px;
+  top: auto;
+  font-size: 1.75rem;
+  filter: drop-shadow(0 3px 3px rgba(0,0,0,.32));
+  z-index: 5;
+}
+
+.beer-mat-label {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 3;
+  font-size: .54rem;
+  font-style: italic;
+  opacity: .68;
+  white-space: nowrap;
+}
+
+.beer-mat-edit {
+  position: absolute;
+  top: 7px;
+  right: 6px;
+  width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(54,37,21,.12);
+  color: rgba(54,37,21,.72);
+  font: 700 12px/1 system-ui, sans-serif;
+  z-index: 6;
+}
+
+.beer-mat.editable {
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.beer-mat.editable:hover,
+.beer-mat.editable:focus-visible {
+  outline: none;
+  transform: rotate(2deg) scale(1.05);
+  box-shadow: 0 9px 18px rgba(0,0,0,.34), 0 0 0 3px var(--accent-soft);
+}
+
+/* Main player's coaster is intentionally larger and sits to the right. */
+.self-beer-mat {
+  width: 104px;
+  height: 104px;
+  transform: rotate(3deg);
+}
+
+.self-beer-mat .beer-mat-name-ring text { font-size: 11px; letter-spacing: .55px; }
+.self-beer-mat .beer-mat-score { font-size: 2.45rem; margin-top: 8px; }
+.self-beer-mat .beer-mat-drink { right: -14px; bottom: 1px; font-size: 2.15rem; }
+.self-beer-mat .beer-mat-label { bottom: 16px; font-size: .62rem; }
+
+/* Opponent coasters are still readable but less dominant. */
+.opponent-beer-mat {
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 8px;
+}
+
+.opponent-beer-mat .beer-mat-name-ring text { font-size: 10px; }
+.opponent-beer-mat .beer-mat-score { font-size: 1.75rem; }
+.opponent-beer-mat .beer-mat-drink { right: -9px; bottom: -3px; font-size: 1.45rem; }
+.opponent-beer-mat .beer-mat-label { bottom: 11px; font-size: .47rem; }
+
+@media (max-height: 760px) and (min-width: 701px) {
+  .self-identity-row {
+    left: calc(50% + 180px);
+    bottom: 14%;
+    transform: scale(.86);
+    transform-origin: center;
+  }
+}
+
+@media (max-width: 700px) {
+  .self-identity-row {
+    left: auto;
+    right: 4%;
+    bottom: 13%;
+    transform: scale(.72);
+    transform-origin: right bottom;
+  }
+
+  .self-beer-mat { width: 94px; height: 94px; }
+  .opponent-beer-mat { width: 58px; height: 58px; }
+  .opponent-beer-mat .beer-mat-label { display: none; }
+  .opponent-beer-mat .beer-mat-name-ring text { font-size: 9px; }
+}
