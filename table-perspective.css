@@ -52,7 +52,7 @@
 .opponent-beer-mat .beer-mat-name-ring.readable-rim-name text { font-size: 9.3px; }
 .opponent-beer-mat .beer-mat-name-ring.readable-rim-name.two-arc-name text { font-size: 8.3px; }
 
-/* Seat anchors. Coasters stay fixed and readable; card groups pivot separately below them. */
+/* Seat anchors. Coasters stay fixed and readable; cards move as a single cluster. */
 .seat-left {
   top: 12%;
   left: 8%;
@@ -80,29 +80,36 @@
   transform: translate(-88px, -8px) rotate(5deg);
 }
 
-/* The complete card area turns back toward the player seated at that side.
-   Both the hidden hand and visible table cards share the same angle, but are
-   pushed lower/outward so they clear the coaster, score and drink. */
-.seat-left .opponent-hand-wrap,
-.seat-left .face-row {
-  transform: translate(-42px, 42px) rotate(-28deg);
-  transform-origin: 62% -12px;
+/* Hand + table cards rotate together around one shared seat-relative pivot. */
+.opponent-card-cluster {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  width: max-content;
+  transform-origin: 50% -18px;
 }
 
+.seat-left .opponent-card-cluster {
+  transform: translate(-36px, 34px) rotate(-28deg) !important;
+}
+
+.seat-right .opponent-card-cluster {
+  transform: translate(36px, 34px) rotate(28deg) !important;
+}
+
+/* Children inherit the cluster angle; don't rotate them independently. */
+.seat-left .opponent-hand-wrap,
+.seat-left .face-row,
 .seat-right .opponent-hand-wrap,
 .seat-right .face-row {
-  transform: translate(42px, 42px) rotate(28deg);
-  transform-origin: 38% -12px;
+  transform: none !important;
+  margin: 0 !important;
 }
 
-.seat-left .face-row,
-.seat-right .face-row {
-  margin-top: 14px;
-}
-
-/* Keep the hand-count pill upright even though the card group turns. */
-.seat-left .opponent-hand-count { transform: rotate(28deg); }
-.seat-right .opponent-hand-count { transform: rotate(-28deg); }
+/* Keep the count pill upright relative to the viewer. */
+.seat-left .opponent-hand-count { transform: rotate(28deg) !important; }
+.seat-right .opponent-hand-count { transform: rotate(-28deg) !important; }
 
 /* Drinks feel like glasses sitting just outside the coaster edge. */
 .opponent-beer-mat .beer-mat-drink {
@@ -118,12 +125,10 @@
   .seat-left .opponent-beer-mat { transform: translate(74px, -5px) rotate(-5deg); }
   .seat-right .opponent-beer-mat { transform: translate(-74px, -5px) rotate(5deg); }
   .opponent-beer-mat { width: 70px; height: 70px; }
-  .seat-left .opponent-hand-wrap,
-  .seat-left .face-row { transform: translate(-34px, 36px) rotate(-26deg); }
-  .seat-right .opponent-hand-wrap,
-  .seat-right .face-row { transform: translate(34px, 36px) rotate(26deg); }
-  .seat-left .opponent-hand-count { transform: rotate(26deg); }
-  .seat-right .opponent-hand-count { transform: rotate(-26deg); }
+  .seat-left .opponent-card-cluster { transform: translate(-30px, 30px) rotate(-26deg) !important; }
+  .seat-right .opponent-card-cluster { transform: translate(30px, 30px) rotate(26deg) !important; }
+  .seat-left .opponent-hand-count { transform: rotate(26deg) !important; }
+  .seat-right .opponent-hand-count { transform: rotate(-26deg) !important; }
 }
 
 @media (max-width: 700px) {
@@ -132,10 +137,9 @@
   .opponent-beer-mat { width: 58px; height: 58px; }
   .seat-left .opponent-beer-mat { transform: translate(42px, -3px) rotate(-4deg); }
   .seat-right .opponent-beer-mat { transform: translate(-42px, -3px) rotate(4deg); }
-  .seat-left .opponent-hand-wrap,
-  .seat-left .face-row { transform: translate(-20px, 28px) rotate(-22deg); }
-  .seat-right .opponent-hand-wrap,
-  .seat-right .face-row { transform: translate(20px, 28px) rotate(22deg); }
-  .seat-left .opponent-hand-count { transform: rotate(22deg); }
-  .seat-right .opponent-hand-count { transform: rotate(-22deg); }
+  .opponent-card-cluster { gap: 9px; }
+  .seat-left .opponent-card-cluster { transform: translate(-18px, 22px) rotate(-22deg) !important; }
+  .seat-right .opponent-card-cluster { transform: translate(18px, 22px) rotate(22deg) !important; }
+  .seat-left .opponent-hand-count { transform: rotate(22deg) !important; }
+  .seat-right .opponent-hand-count { transform: rotate(-22deg) !important; }
 }
