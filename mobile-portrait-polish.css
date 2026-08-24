@@ -99,9 +99,10 @@
     display: none !important;
   }
 
-  /* Three clean lower bands: table cards, setup controls, then held hand. */
+  /* Four distinct portrait bands: opponents, centre piles, local table cards,
+     then setup controls / held hand. Keep local table cards clear of the pile. */
   body[data-game-phase="setup"] .self-table-zone {
-    bottom: 38% !important;
+    bottom: 27% !important;
   }
 
   .self-identity-row {
@@ -148,12 +149,12 @@
     line-height: 1.15 !important;
   }
 
-  /* The hand itself was still dropping behind Safari's bottom toolbar. */
+  /* Keep the held cards above Safari's overlay toolbar. */
   .hand {
-    bottom: -18px !important;
+    bottom: 8px !important;
   }
 
   .hand-tools {
-    bottom: 2px !important;
+    bottom: 12px !important;
   }
 }
