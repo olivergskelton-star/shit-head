@@ -60,7 +60,7 @@ function dealNewGame() {
   state.players = Object.fromEntries(PLAYER_NAMES.map((name) => [name, { faceDown: [], faceUp: [], hand: [] }]));
   for (let round = 0; round < 3; round += 1) PLAYER_NAMES.forEach((name) => state.players[name].faceDown.push(deck.pop()));
   for (let round = 0; round < 3; round += 1) PLAYER_NAMES.forEach((name) => state.players[name].faceUp.push(deck.pop()));
-  for (let round = 0; round < 3; round += 1) PLAYER_NAMES.forEach((name) => state.players[name].hand.push(deck.pop()));
+  for (let round = 0; round < 4; round += 1) PLAYER_NAMES.forEach((name) => state.players[name].hand.push(deck.pop()));
   state.drawPile = deck;
   render();
 }
