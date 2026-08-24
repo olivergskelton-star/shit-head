@@ -5,13 +5,14 @@
   /* Setup deliberately fades the shared piles on desktop. On portrait that
      makes the centre unreadable, so restore contrast while keeping it inert. */
   body[data-game-phase="setup"] .centre-zone {
-    opacity: .82 !important;
+    opacity: .88 !important;
     pointer-events: none !important;
   }
 
-  /* Treat Draw / Pile / Burn as one clear three-column control group. */
+  /* Draw / Pile / Burn live in the clear middle of the felt, below the
+     opponents' cards rather than underneath them. */
   .centre-zone {
-    top: 30.5% !important;
+    top: 44% !important;
     display: grid !important;
     grid-template-columns: repeat(3, 56px) !important;
     justify-content: center !important;
@@ -38,7 +39,7 @@
     left: 50% !important;
     transform: translateX(-50%) !important;
     margin: 0 !important;
-    color: rgba(255,255,255,.88) !important;
+    color: rgba(255,255,255,.9) !important;
     font-size: .58rem !important;
     font-weight: 850 !important;
     line-height: 1 !important;
@@ -60,23 +61,23 @@
   }
 
   #drawPile .card-back {
-    opacity: .96 !important;
+    opacity: .98 !important;
     filter: none !important;
   }
 
   #discardPile .empty-pile {
-    opacity: .34 !important;
-    border: 2px dashed rgba(255,255,255,.58) !important;
-    background: rgba(255,255,255,.035) !important;
+    opacity: .38 !important;
+    border: 2px dashed rgba(255,255,255,.62) !important;
+    background: rgba(255,255,255,.04) !important;
   }
 
   .pile-burn {
-    opacity: .82 !important;
+    opacity: .86 !important;
   }
 
   .pile-burn:not(.has-cards) .burn-card {
-    opacity: .34 !important;
-    filter: grayscale(.2) brightness(.82) !important;
+    opacity: .38 !important;
+    filter: grayscale(.2) brightness(.84) !important;
     border-style: dashed !important;
   }
 
@@ -86,7 +87,7 @@
     min-width: 25px !important;
     padding: 3px 6px !important;
     border: 1px solid rgba(255,255,255,.12) !important;
-    background: rgba(19,11,7,.88) !important;
+    background: rgba(19,11,7,.9) !important;
     color: #fff !important;
     font-size: .66rem !important;
     box-shadow: 0 3px 8px rgba(0,0,0,.28) !important;
@@ -98,7 +99,11 @@
     display: none !important;
   }
 
-  /* Give the editable name/coaster its own clear pocket above the setup strip. */
+  /* Three clean lower bands: table cards, setup controls, then held hand. */
+  body[data-game-phase="setup"] .self-table-zone {
+    bottom: 38% !important;
+  }
+
   .self-identity-row {
     right: 1.5% !important;
     bottom: 28% !important;
@@ -107,18 +112,17 @@
     z-index: 250 !important;
   }
 
-  /* Keep READY + instructions compact and away from the coaster rather than
-     stretching right across the whole player area. */
   body[data-game-phase="setup"] .setup-actions {
     left: 42% !important;
     bottom: 17% !important;
     width: 70% !important;
     min-width: 0 !important;
     max-width: none !important;
-    gap: 5px !important;
-    padding: 4px 6px !important;
+    gap: 6px !important;
+    padding: 5px 7px !important;
     transform: translateX(-50%) scale(.9) !important;
     transform-origin: center bottom !important;
+    white-space: normal !important;
   }
 
   body[data-game-phase="setup"] .setup-ready {
@@ -128,11 +132,28 @@
     padding: 5px 9px !important;
   }
 
+  /* Short mobile instruction: the full desktop wording is unnecessary here. */
   body[data-game-phase="setup"] .setup-hint {
     min-width: 0 !important;
-    max-width: 220px !important;
-    font-size: .59rem !important;
-    line-height: 1.16 !important;
+    max-width: 176px !important;
+    font-size: 0 !important;
+    line-height: 1.15 !important;
     text-align: left !important;
+    white-space: normal !important;
+  }
+
+  body[data-game-phase="setup"] .setup-hint::after {
+    content: "Tap a hand card, then a table card to swap.";
+    font-size: .62rem !important;
+    line-height: 1.15 !important;
+  }
+
+  /* The hand itself was still dropping behind Safari's bottom toolbar. */
+  .hand {
+    bottom: -18px !important;
+  }
+
+  .hand-tools {
+    bottom: 2px !important;
   }
 }
