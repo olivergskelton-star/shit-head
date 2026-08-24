@@ -1,0 +1,166 @@
+/* Table-first polish: foreground hand, readable fan, clearer centre */
+
+/* Keep the centre of the table reserved for the live piles. */
+.centre-zone {
+  top: 35%;
+  z-index: 4;
+}
+
+.centre-zone::before {
+  inset: -24px -34px;
+  background: rgba(0,0,0,.055);
+}
+
+/* Table cards belong on the table; the hand belongs in front of the player. */
+.self-table-zone {
+  position: relative;
+  transform: translateY(-28px);
+  z-index: 6;
+}
+
+.self-face-row {
+  gap: 12px;
+}
+
+.seat-player {
+  bottom: -1.5%;
+  width: min(900px, 96%);
+  z-index: 10;
+}
+
+/* A hand of cards, not a row of buttons. The overlap deliberately leaves
+   the upper-left index of every card exposed. */
+.hand {
+  position: relative;
+  min-height: 142px;
+  padding: 20px 54px 0;
+  gap: 0;
+  overflow: visible;
+  transform: translateY(34px);
+  isolation: isolate;
+}
+
+.hand button.card {
+  width: clamp(82px, 8vw, 98px);
+  flex: 0 0 clamp(82px, 8vw, 98px);
+  min-height: 116px;
+  margin-left: clamp(-44px, -3.4vw, -34px);
+  padding: 10px 8px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+  line-height: .92;
+  font-size: clamp(1.28rem, 2.5vw, 1.8rem);
+  letter-spacing: -.04em;
+  border-radius: 10px;
+  transform-origin: 50% 165%;
+  transform: rotate(calc((var(--card-index) - var(--card-mid)) * 4.2deg));
+  box-shadow: 0 5px 12px rgba(0,0,0,.34);
+}
+
+.hand button.card:first-child {
+  margin-left: 0;
+}
+
+/* Give the exposed index a little card-like corner treatment. */
+.hand button.card::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 29px;
+  height: 34px;
+  border-radius: 7px;
+  background: rgba(255,255,255,.36);
+  z-index: -1;
+}
+
+.hand button.card:hover,
+.hand button.card:focus-visible {
+  transform: translateY(-16px) rotate(0deg) scale(1.04);
+  z-index: 80;
+}
+
+.hand button.card.selected {
+  transform: translateY(-28px) rotate(0deg) scale(1.055);
+  z-index: 90;
+}
+
+/* Controls should not occupy the table when nothing is selected. */
+.play-actions {
+  position: relative;
+  z-index: 100;
+  min-height: 44px;
+  margin-top: 24px;
+  transform: translateY(15px);
+}
+
+.self-nameplate {
+  position: relative;
+  z-index: 100;
+  transform: translateY(12px);
+}
+
+/* Make the near rail read as a physical edge that the hand is hanging over. */
+.table::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -13px;
+  height: 25px;
+  border-radius: 0 0 999px 999px;
+  background: linear-gradient(to bottom, rgba(255,255,255,.035), rgba(0,0,0,.42));
+  pointer-events: none;
+  z-index: 8;
+}
+
+/* Kitchen should feel warmer and less like generic casino felt. */
+body[data-theme="kitchen"] .room-stage {
+  background:
+    radial-gradient(circle at 9% 11%, rgba(244,205,139,.16) 0 52px, transparent 54px),
+    radial-gradient(circle at 91% 12%, rgba(244,205,139,.13) 0 48px, transparent 50px),
+    rgba(0,0,0,.17);
+}
+
+@media (max-width: 700px) {
+  .centre-zone {
+    top: 31%;
+  }
+
+  .seat-player {
+    bottom: -2.5%;
+    width: 100%;
+  }
+
+  .self-table-zone {
+    transform: translateY(-18px);
+  }
+
+  .hand {
+    min-height: 126px;
+    padding: 22px 28px 0;
+    justify-content: center;
+    overflow: visible;
+    transform: translateY(32px);
+  }
+
+  .hand button.card {
+    width: 76px;
+    flex-basis: 76px;
+    min-height: 108px;
+    margin-left: -34px;
+    font-size: 1.28rem;
+    transform: rotate(calc((var(--card-index) - var(--card-mid)) * 4deg));
+  }
+
+  .play-actions {
+    margin-top: 18px;
+    transform: translateY(10px);
+  }
+
+  .self-nameplate {
+    transform: translateY(8px);
+  }
+}
