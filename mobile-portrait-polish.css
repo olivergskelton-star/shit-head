@@ -154,7 +154,47 @@
     bottom: 8px !important;
   }
 
-  .hand-tools {
-    bottom: 12px !important;
+  /* In play the desktop action row normally lives below the table edge.
+     Give PLAY / PICK UP / FINISH TURN a guaranteed portrait dock above hand. */
+  body[data-game-phase="play"] .play-actions {
+    position: absolute !important;
+    left: 50% !important;
+    bottom: 118px !important;
+    transform: translateX(-50%) !important;
+    z-index: 360 !important;
+    width: max-content !important;
+    max-width: 72% !important;
+    min-height: 44px !important;
+    margin: 0 !important;
+    padding: 4px 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    flex-wrap: nowrap !important;
+    white-space: nowrap !important;
+  }
+
+  body[data-game-phase="play"] .play-selected,
+  body[data-game-phase="play"] .pickup-pile,
+  body[data-game-phase="play"] .finish-turn {
+    min-width: 88px !important;
+    min-height: 42px !important;
+    padding: 7px 11px !important;
+    border-radius: 999px !important;
+    font-size: .72rem !important;
+    line-height: 1 !important;
+  }
+
+  /* SORT shares the same vertical action band but stays at the right edge,
+     leaving PLAY/PICK UP centred and unobscured. */
+  .sort-hand {
+    left: auto !important;
+    right: 2% !important;
+    bottom: 120px !important;
+    transform: none !important;
+    z-index: 365 !important;
+    min-height: 42px !important;
+    padding: 7px 10px !important;
   }
 }
