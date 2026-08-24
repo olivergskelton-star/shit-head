@@ -90,12 +90,14 @@
   transform-origin: 50% -18px;
 }
 
+/* Keep the successful 28° seating angle, but move both clusters up and outward
+   into the open upper corners so they no longer crowd the local player's cards. */
 .seat-left .opponent-card-cluster {
-  transform: translate(-36px, 34px) rotate(-28deg) !important;
+  transform: translate(-72px, -6px) rotate(-28deg) !important;
 }
 
 .seat-right .opponent-card-cluster {
-  transform: translate(36px, 34px) rotate(28deg) !important;
+  transform: translate(72px, -6px) rotate(28deg) !important;
 }
 
 /* Children inherit the cluster angle; don't rotate them independently. */
@@ -125,8 +127,8 @@
   .seat-left .opponent-beer-mat { transform: translate(74px, -5px) rotate(-5deg); }
   .seat-right .opponent-beer-mat { transform: translate(-74px, -5px) rotate(5deg); }
   .opponent-beer-mat { width: 70px; height: 70px; }
-  .seat-left .opponent-card-cluster { transform: translate(-30px, 30px) rotate(-26deg) !important; }
-  .seat-right .opponent-card-cluster { transform: translate(30px, 30px) rotate(26deg) !important; }
+  .seat-left .opponent-card-cluster { transform: translate(-58px, -2px) rotate(-26deg) !important; }
+  .seat-right .opponent-card-cluster { transform: translate(58px, -2px) rotate(26deg) !important; }
   .seat-left .opponent-hand-count { transform: rotate(26deg) !important; }
   .seat-right .opponent-hand-count { transform: rotate(-26deg) !important; }
 }
@@ -138,8 +140,8 @@
   .seat-left .opponent-beer-mat { transform: translate(42px, -3px) rotate(-4deg); }
   .seat-right .opponent-beer-mat { transform: translate(-42px, -3px) rotate(4deg); }
   .opponent-card-cluster { gap: 9px; }
-  .seat-left .opponent-card-cluster { transform: translate(-18px, 22px) rotate(-22deg) !important; }
-  .seat-right .opponent-card-cluster { transform: translate(18px, 22px) rotate(22deg) !important; }
+  .seat-left .opponent-card-cluster { transform: translate(-34px, 4px) rotate(-22deg) !important; }
+  .seat-right .opponent-card-cluster { transform: translate(34px, 4px) rotate(22deg) !important; }
   .seat-left .opponent-hand-count { transform: rotate(22deg) !important; }
   .seat-right .opponent-hand-count { transform: rotate(-22deg) !important; }
 }
