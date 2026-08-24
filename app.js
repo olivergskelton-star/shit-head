@@ -128,8 +128,11 @@ function renderSelf(name) {
   playerSeat.replaceChildren();
   playerSeat.classList.toggle("active", state.currentPlayer === name);
 
+  const tableZone = document.createElement("div");
+  tableZone.className = "self-table-zone";
+
   const tableCards = document.createElement("div");
-  tableCards.className = "card-row face-row";
+  tableCards.className = "card-row face-row self-face-row";
   player.faceUp.forEach((card, index) => {
     const stack = document.createElement("div");
     stack.className = "face-stack";
@@ -141,40 +144,44 @@ function renderSelf(name) {
   const label = document.createElement("p");
   label.className = "player-label";
   label.textContent = "Your table cards";
+  tableZone.append(label, tableCards);
 
   const hand = document.createElement("div");
   hand.className = "hand";
   player.hand.forEach((card, index) => {
-    hand.append(makeCard(card, {
+    const cardEl = makeCard(card, {
       button: true,
       selected: state.selected.includes(index),
       onClick: () => toggleCardSelection(name, index),
-    }));
+    });
+    cardEl.style.setProperty("--card-index", index);
+    cardEl.style.setProperty("--card-mid", (player.hand.length - 1) / 2);
+    hand.append(cardEl);
   });
 
   const actions = document.createElement("div");
-  actions.className = "play-actions";
+  actions.className = `play-actions${state.selected.length ? " visible" : ""}`;
 
   const playButton = document.createElement("button");
   playButton.type = "button";
   playButton.className = "play-selected";
-  playButton.textContent = state.selected.length > 1 ? `Play ${state.selected.length} cards` : "Play card";
+  playButton.textContent = state.selected.length > 1 ? `PLAY ${state.selected.length}` : "PLAY";
   playButton.disabled = state.currentPlayer !== name || state.selected.length === 0;
   playButton.addEventListener("click", () => playSelected(name));
 
   const selectionHint = document.createElement("span");
   selectionHint.className = "selection-hint";
   selectionHint.textContent = state.selected.length > 1
-    ? `${state.selected.length} matching cards selected`
-    : "Tap matching cards to play multiples";
+    ? `${state.selected.length} matching cards`
+    : "Selected";
 
   actions.append(playButton, selectionHint);
 
   const plate = document.createElement("div");
-  plate.className = "nameplate";
+  plate.className = "nameplate self-nameplate";
   plate.innerHTML = `<span class="turn-dot"></span><span>${name} · You</span>`;
 
-  playerSeat.append(tableCards, label, hand, actions, plate);
+  playerSeat.append(tableZone, hand, actions, plate);
 }
 
 function toggleCardSelection(name, index) {
@@ -199,7 +206,7 @@ function toggleCardSelection(name, index) {
     const first = hand[state.selected[0]];
     if (first && first.rank !== card.rank) {
       state.selected = [index];
-      state.lastMessage = "You can only play multiple cards of the same rank together.";
+      state.lastMessage = "Only matching cards can be played together.";
       render();
       return;
     }
@@ -228,22 +235,13 @@ function normalRankValue(rank) {
 function canPlayRank(rank) {
   const top = topDiscard();
   if (!top) return true;
-
-  // Special cards can always be played.
   if (rank === "2" || rank === "3" || rank === "10") return true;
-
-  // A 2 resets the pile: anything may follow it.
   if (top.rank === "2") return true;
-
-  // A 7 forces the next ordinary card to be 7 or lower.
   if (top.rank === "7") {
     return normalRankValue(rank) !== -1 && normalRankValue(rank) <= normalRankValue("7");
   }
-
-  // 3 is playable on anything but otherwise remains the visible top card.
   if (top.rank === "3") return true;
 
-  // Ordinary play is equal or higher.
   const candidate = normalRankValue(rank);
   const target = normalRankValue(top.rank);
   if (candidate === -1 || target === -1) return false;
@@ -308,24 +306,22 @@ function playSelected(name) {
   if (cleared) {
     state.discard = [];
     state.lastMessage = rank === "10"
-      ? `${name} cleared the pile with a 10 and goes again.`
+      ? `${name} cleared the pile with a 10 — go again.`
       : rank === "8"
-        ? `${name} cleared the pile with three 8s and goes again.`
-        : `${name} cleared the pile with four ${rank}s and goes again.`;
+        ? `${name} cleared the pile with three 8s — go again.`
+        : `${name} cleared the pile with four ${rank}s — go again.`;
   } else if (rank === "2") {
-    state.lastMessage = `${name} played a 2 — the pile is reset.`;
+    state.lastMessage = `${name} reset the pile with a 2.`;
   } else if (rank === "7") {
-    state.lastMessage = `${name} played a 7 — next card must be 7 or lower.`;
+    state.lastMessage = `${name} played a 7 — ${PLAYER_NAMES[(PLAYER_NAMES.indexOf(name) + 1) % PLAYER_NAMES.length]} must play 7 or lower.`;
   } else if (rank === "3") {
-    state.lastMessage = `${name} played a 3 — playable on anything.`;
+    state.lastMessage = `${name} played a 3.`;
   } else {
     state.lastMessage = `${name} played ${cards.length > 1 ? cards.length + " × " + rank : cardText(cards[0])}.`;
   }
 
   refillHand(player);
   state.selected = [];
-
-  // Clearing the pile keeps the turn; otherwise play moves clockwise.
   if (!cleared) nextPlayer();
   render();
 }
@@ -353,9 +349,8 @@ function renderDiscard() {
     discardPile.append(makeCard(top));
   } else {
     const placeholder = document.createElement("span");
-    placeholder.className = "card";
-    placeholder.style.opacity = ".16";
-    placeholder.textContent = "—";
+    placeholder.className = "card empty-pile";
+    placeholder.textContent = "";
     discardPile.append(placeholder);
   }
   drawCount.textContent = state.drawPile.length;
@@ -369,10 +364,10 @@ function render() {
   renderDiscard();
 
   if (state.lastMessage) {
-    statusText.textContent = `${state.lastMessage} ${state.currentPlayer === state.viewer ? "Your turn." : `It’s ${state.currentPlayer}’s turn.`}`;
+    statusText.textContent = state.lastMessage;
   } else {
     statusText.textContent = state.currentPlayer === state.viewer
-      ? "Your turn — select a card, or matching cards, then play."
+      ? "Your turn — choose a card."
       : `${state.currentPlayer}’s turn.`;
   }
 }
