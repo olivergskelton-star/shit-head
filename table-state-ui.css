@@ -1,0 +1,72 @@
+/* Compact opponent hands + clear live counts. */
+.opponent-hand-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 112px;
+  max-width: 150px;
+  margin: 0 auto 8px;
+}
+
+.compact-opponent-hand {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 92px;
+  min-width: 92px;
+  overflow: visible;
+}
+
+.compact-opponent-hand .card {
+  flex: 0 0 42px;
+  width: 42px;
+  margin-left: -31px;
+  transform: rotate(calc((var(--opponent-card-index) - (var(--opponent-card-count) - 1) / 2) * 2.2deg));
+  transform-origin: 50% 150%;
+}
+
+.compact-opponent-hand .card:first-child { margin-left: 0; }
+
+.opponent-hand-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  height: 28px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.68);
+  border: 1px solid rgba(255,255,255,.24);
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .04em;
+  box-shadow: 0 3px 8px rgba(0,0,0,.28);
+}
+
+.pile-discard { position: relative; }
+
+.pile-discard .discard-count {
+  position: absolute;
+  right: -10px;
+  bottom: -9px;
+  z-index: 8;
+  min-width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(0,0,0,.72);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.24);
+  font-size: .72rem;
+  font-weight: 900;
+}
+
+@media (max-width: 700px) {
+  .opponent-hand-wrap { min-width: 98px; max-width: 126px; gap: 4px; }
+  .compact-opponent-hand { width: 78px; min-width: 78px; }
+  .compact-opponent-hand .card { width: 38px; flex-basis: 38px; margin-left: -29px; }
+  .opponent-hand-count { min-width: 30px; height: 25px; font-size: .66rem; }
+}
