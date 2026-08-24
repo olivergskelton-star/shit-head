@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#17342a" />
+  <title>Shit Head</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-theme="kitchen">
+  <main class="game-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Friday Night</p>
+        <h1>Shit Head</h1>
+      </div>
+      <div class="controls">
+        <label>
+          Venue
+          <select id="themeSelect">
+            <option value="kitchen">Kitchen Table</option>
+            <option value="pub">Pub</option>
+            <option value="casino">Casino</option>
+          </select>
+        </label>
+        <label>
+          View as
+          <select id="viewerSelect"></select>
+        </label>
+      </div>
+    </header>
+
+    <section class="room-stage" aria-label="Card table">
+      <div class="ambient ambient-left" aria-hidden="true"></div>
+      <div class="ambient ambient-right" aria-hidden="true"></div>
+
+      <div id="table" class="table">
+        <section id="opponentLeft" class="seat seat-opponent seat-left"></section>
+        <section id="opponentRight" class="seat seat-opponent seat-right"></section>
+
+        <section class="centre-zone" aria-label="Centre piles">
+          <button id="drawPile" class="pile pile-draw" type="button" aria-label="Draw a card">
+            <span class="card card-back stacked"></span>
+            <span id="drawCount" class="pile-count"></span>
+          </button>
+
+          <div class="pile-wrap">
+            <div id="discardPile" class="pile pile-discard" aria-label="Discard pile"></div>
+            <span class="pile-label">Discard</span>
+          </div>
+        </section>
+
+        <section id="playerSeat" class="seat seat-player"></section>
+      </div>
+    </section>
+
+    <footer class="statusbar">
+      <p id="statusText" aria-live="polite"></p>
+      <button id="newGameBtn" type="button">New deal</button>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
