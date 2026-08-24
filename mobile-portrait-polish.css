@@ -1,0 +1,138 @@
+/* Portrait-only cleanup layer.
+   Desktop and landscape phone layouts are intentionally untouched. */
+
+@media (max-width: 700px) and (orientation: portrait) {
+  /* Setup deliberately fades the shared piles on desktop. On portrait that
+     makes the centre unreadable, so restore contrast while keeping it inert. */
+  body[data-game-phase="setup"] .centre-zone {
+    opacity: .82 !important;
+    pointer-events: none !important;
+  }
+
+  /* Treat Draw / Pile / Burn as one clear three-column control group. */
+  .centre-zone {
+    top: 30.5% !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 56px) !important;
+    justify-content: center !important;
+    align-items: start !important;
+    column-gap: 17px !important;
+  }
+
+  .centre-zone::before {
+    inset: -25px -22px -18px !important;
+    border-color: rgba(255,255,255,.13) !important;
+    background: rgba(22,13,9,.16) !important;
+  }
+
+  .centre-zone .pile-wrap {
+    position: relative !important;
+    padding-top: 0 !important;
+    gap: 0 !important;
+  }
+
+  .centre-zone .pile-label,
+  #drawPile::before {
+    position: absolute !important;
+    top: -18px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    margin: 0 !important;
+    color: rgba(255,255,255,.88) !important;
+    font-size: .58rem !important;
+    font-weight: 850 !important;
+    line-height: 1 !important;
+    letter-spacing: .12em !important;
+    text-transform: uppercase !important;
+    white-space: nowrap !important;
+    z-index: 12 !important;
+  }
+
+  #drawPile::before {
+    content: "Draw";
+    pointer-events: none;
+  }
+
+  .pile,
+  .pile .card {
+    width: 56px !important;
+    min-height: 79px !important;
+  }
+
+  #drawPile .card-back {
+    opacity: .96 !important;
+    filter: none !important;
+  }
+
+  #discardPile .empty-pile {
+    opacity: .34 !important;
+    border: 2px dashed rgba(255,255,255,.58) !important;
+    background: rgba(255,255,255,.035) !important;
+  }
+
+  .pile-burn {
+    opacity: .82 !important;
+  }
+
+  .pile-burn:not(.has-cards) .burn-card {
+    opacity: .34 !important;
+    filter: grayscale(.2) brightness(.82) !important;
+    border-style: dashed !important;
+  }
+
+  .pile-count {
+    right: -8px !important;
+    bottom: -7px !important;
+    min-width: 25px !important;
+    padding: 3px 6px !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+    background: rgba(19,11,7,.88) !important;
+    color: #fff !important;
+    font-size: .66rem !important;
+    box-shadow: 0 3px 8px rgba(0,0,0,.28) !important;
+  }
+
+  /* During setup the long table-card label repeats the instruction already in
+     the READY strip and is the source of the visible text collision. */
+  body[data-game-phase="setup"] .player-label {
+    display: none !important;
+  }
+
+  /* Give the editable name/coaster its own clear pocket above the setup strip. */
+  .self-identity-row {
+    right: 1.5% !important;
+    bottom: 28% !important;
+    transform: scale(.68) !important;
+    transform-origin: right bottom !important;
+    z-index: 250 !important;
+  }
+
+  /* Keep READY + instructions compact and away from the coaster rather than
+     stretching right across the whole player area. */
+  body[data-game-phase="setup"] .setup-actions {
+    left: 42% !important;
+    bottom: 17% !important;
+    width: 70% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    gap: 5px !important;
+    padding: 4px 6px !important;
+    transform: translateX(-50%) scale(.9) !important;
+    transform-origin: center bottom !important;
+  }
+
+  body[data-game-phase="setup"] .setup-ready {
+    flex: 0 0 auto !important;
+    min-width: 80px !important;
+    min-height: 34px !important;
+    padding: 5px 9px !important;
+  }
+
+  body[data-game-phase="setup"] .setup-hint {
+    min-width: 0 !important;
+    max-width: 220px !important;
+    font-size: .59rem !important;
+    line-height: 1.16 !important;
+    text-align: left !important;
+  }
+}
