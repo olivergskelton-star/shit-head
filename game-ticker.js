@@ -1,4 +1,4 @@
-// Game ticker: explicit current-turn indicator plus a compact running play history.
+// Game ticker: compact running play history.
 // Loaded last so it observes the final state produced by all game-rule layers.
 
 state.gameHistory = [];
@@ -68,21 +68,13 @@ function renderGameTicker() {
   if (!ui) {
     ui = document.createElement("div");
     ui.className = "game-ticker-ui";
-    ui.innerHTML = `
-      <div class="turn-now" aria-live="polite">
-        <span class="turn-now-label">CURRENT TURN</span>
-        <strong class="turn-now-name"></strong>
-      </div>
-      <div class="history-ticker" aria-label="Recent play history" aria-live="polite"></div>
-    `;
+    ui.innerHTML = `<div class="history-ticker" aria-label="Recent play history" aria-live="polite"></div>`;
     statusbar.insertBefore(ui, newGameBtn);
   }
 
-  ui.querySelector(".turn-now-name").textContent = `${publicName(state.currentPlayer)}’S TURN`;
-
   const ticker = ui.querySelector(".history-ticker");
   ticker.replaceChildren();
-  const recent = state.gameHistory.slice(-5);
+  const recent = state.gameHistory.slice(-6);
   recent.forEach((entry, index) => {
     const item = document.createElement("span");
     item.className = `ticker-item ticker-${entry.kind}`;
