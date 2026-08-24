@@ -1,26 +1,29 @@
 /* Hand sorting + large pickup handling. */
 .sort-hand {
   position: absolute;
-  left: calc(50% - 245px);
-  bottom: 8.5%;
-  z-index: 176;
-  min-height: 34px;
-  border: 1px solid rgba(255,255,255,.46);
+  left: calc(50% + 225px);
+  bottom: -18px;
+  transform: translateX(-50%);
+  z-index: 260;
+  min-height: 36px;
+  border: 1px solid var(--accent);
   border-radius: 999px;
-  background: rgba(0,0,0,.52);
+  background: rgba(0,0,0,.78);
   color: #fff;
-  padding: 6px 11px;
-  font-size: .7rem;
+  padding: 7px 12px;
+  font-size: .72rem;
   font-weight: 900;
   letter-spacing: .07em;
   cursor: pointer;
+  box-shadow: 0 5px 14px rgba(0,0,0,.35);
+  pointer-events: auto;
 }
 
 .sort-hand:hover,
 .sort-hand:focus-visible {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
+  box-shadow: 0 0 0 2px var(--accent-soft), 0 5px 14px rgba(0,0,0,.35);
 }
 
 /* Keep rank/suit corners readable as pickup hands get silly. */
@@ -59,10 +62,10 @@
 
 @media (max-width: 700px) {
   .sort-hand {
-    left: 4%;
-    bottom: 11%;
+    left: calc(50% + 145px);
+    bottom: -8px;
     font-size: .62rem;
-    padding: 5px 9px;
+    padding: 6px 9px;
   }
 
   .hand.hand-huge button.card {
