@@ -37,7 +37,12 @@ function renderCompactOpponent(container, name) {
     tableCards.append(stack);
   });
 
-  container.append(makeBeerMat(name, "opponent-beer-mat"), handWrap, tableCards);
+  const cardCluster = document.createElement("div");
+  cardCluster.className = "opponent-card-cluster";
+  cardCluster.append(handWrap, tableCards);
+
+  // Keep the coaster as a fixed seat anchor; rotate/move only the cards as one unit.
+  container.append(makeBeerMat(name, "opponent-beer-mat"), cardCluster);
 }
 
 renderOpponent = renderCompactOpponent;
