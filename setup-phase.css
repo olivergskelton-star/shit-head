@@ -4,9 +4,15 @@ body[data-game-phase="setup"] .centre-zone {
   pointer-events: none;
 }
 
+body[data-game-phase="setup"] .self-face-row .face-stack,
 body[data-game-phase="setup"] .self-face-row .setup-table-card,
 body[data-game-phase="setup"] .hand button.card {
   cursor: pointer;
+}
+
+body[data-game-phase="setup"] .self-face-row .face-stack:hover .card:not(.card-back),
+body[data-game-phase="setup"] .hand button.card:hover {
+  box-shadow: 0 0 0 3px rgba(240,194,123,.65), 0 10px 22px rgba(0,0,0,.34);
 }
 
 body[data-game-phase="setup"] .setup-selected {
@@ -15,8 +21,24 @@ body[data-game-phase="setup"] .setup-selected {
   z-index: 190 !important;
 }
 
-.setup-actions {
-  min-width: min(620px, 92%);
+/* During setup, put the controls visibly between the table cards and hand.
+   Do not inherit the normal play-action position below the table edge. */
+body[data-game-phase="setup"] .setup-actions {
+  position: absolute !important;
+  left: 50% !important;
+  bottom: 8.5% !important;
+  transform: translateX(-50%) !important;
+  z-index: 230 !important;
+  min-width: min(650px, 94%);
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: rgba(28,18,12,.58);
+  box-shadow: 0 5px 16px rgba(0,0,0,.24);
 }
 
 .setup-ready {
@@ -24,7 +46,7 @@ body[data-game-phase="setup"] .setup-selected {
   min-height: 42px;
   border: 1px solid var(--accent);
   border-radius: 999px;
-  background: rgba(0,0,0,.62);
+  background: rgba(0,0,0,.68);
   color: #fff;
   padding: 9px 18px;
   font-weight: 900;
@@ -37,14 +59,35 @@ body[data-game-phase="setup"] .setup-selected {
 }
 
 .setup-hint {
-  max-width: 420px;
-  color: rgba(255,255,255,.82);
-  font-size: .76rem;
-  line-height: 1.25;
+  max-width: 455px;
+  color: rgba(255,255,255,.92);
+  font-size: .78rem;
+  line-height: 1.28;
+  text-align: left;
+}
+
+body[data-game-phase="setup"] .player-label::after {
+  content: " — click one to swap";
+  color: var(--accent);
+}
+
+@media (max-height: 760px) and (min-width: 701px) {
+  body[data-game-phase="setup"] .setup-actions {
+    bottom: 7.5% !important;
+    transform: translateX(-50%) scale(.9) !important;
+    transform-origin: center bottom;
+  }
 }
 
 @media (max-width: 700px) {
-  .setup-actions { min-width: 94%; }
+  body[data-game-phase="setup"] .setup-actions {
+    bottom: 8% !important;
+    min-width: 94%;
+    gap: 7px;
+    padding: 6px 8px;
+    transform: translateX(-50%) scale(.86) !important;
+    transform-origin: center bottom;
+  }
   .setup-hint { max-width: 260px; font-size: .68rem; }
   .setup-ready { min-width: 90px; min-height: 38px; padding: 7px 12px; }
 }
