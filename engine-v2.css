@@ -1,5 +1,17 @@
 /* Engine test UI: intentionally functional rather than polished. */
-.centre-zone { gap: 28px; }
+
+/* Hard vertical separation while the engine has Draw / Discard / Burn.
+   Centre piles own the upper-middle of the felt; the player's table cards
+   stay in their own lower band. */
+.centre-zone {
+  top: 34%;
+  gap: 28px;
+  align-items: flex-start;
+}
+
+.self-table-zone {
+  bottom: 22%;
+}
 
 .pile-burn {
   opacity: .55;
@@ -14,7 +26,8 @@
   border-style: dashed;
 }
 
-.pickup-pile {
+.pickup-pile,
+.finish-turn {
   min-width: 92px;
   min-height: 42px;
   border: 1px solid rgba(255,255,255,.6);
@@ -26,9 +39,27 @@
   letter-spacing: .05em;
 }
 
-.pickup-pile:disabled { opacity: .28; cursor: default; }
+.pickup-pile:disabled,
+.finish-turn:disabled { opacity: .28; cursor: default; }
+
+@media (max-height: 760px) and (min-width: 701px) {
+  .centre-zone { top: 31%; }
+  .self-table-zone { bottom: 21%; }
+}
 
 @media (max-width: 700px) {
-  .centre-zone { gap: 14px; }
-  .pickup-pile { min-width: 78px; min-height: 38px; padding: 7px 11px; font-size: .78rem; }
+  .centre-zone {
+    top: 31%;
+    gap: 14px;
+  }
+
+  .self-table-zone { bottom: 23%; }
+
+  .pickup-pile,
+  .finish-turn {
+    min-width: 78px;
+    min-height: 38px;
+    padding: 7px 11px;
+    font-size: .78rem;
+  }
 }
