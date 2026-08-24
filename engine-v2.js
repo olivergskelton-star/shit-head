@@ -62,7 +62,7 @@ function pickupDiscard(name) {
     return;
   }
   if (!state.discard.length) {
-    state.lastMessage = "There’s no discard pile to pick up.";
+    state.lastMessage = "There’s no pile to pick up.";
     render();
     return;
   }
@@ -182,6 +182,25 @@ function ensureBurnPileUi() {
   centre.append(wrap);
 }
 
+function ensureMainPileUi() {
+  const wrap = discardPile.closest(".pile-wrap");
+  if (!wrap) return;
+
+  const label = wrap.querySelector(".pile-label");
+  if (label) label.textContent = "Pile";
+  discardPile.setAttribute("aria-label", "Pile");
+
+  let count = wrap.querySelector("#pileCount");
+  if (!count) {
+    count = document.createElement("span");
+    count.id = "pileCount";
+    count.className = "pile-count pile-main-count";
+    discardPile.insertAdjacentElement("afterend", count);
+  }
+  count.textContent = state.discard.length;
+  count.setAttribute("aria-label", `${state.discard.length} card${state.discard.length === 1 ? "" : "s"} in pile`);
+}
+
 function enhanceTurnActions() {
   const actions = playerSeat.querySelector(".play-actions");
   if (!actions) return;
@@ -228,6 +247,7 @@ const renderV1 = render;
 render = function renderV2() {
   renderV1();
   ensureBurnPileUi();
+  ensureMainPileUi();
   enhanceTurnActions();
   renderBurnPile();
 };
@@ -239,4 +259,5 @@ newGameBtn.addEventListener("click", () => {
 });
 
 ensureBurnPileUi();
+ensureMainPileUi();
 render();
