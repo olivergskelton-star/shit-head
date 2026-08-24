@@ -7,7 +7,16 @@ state.setupReady = Object.fromEntries(PLAYER_NAMES.map((name) => [name, false]))
 state.setupSelection = null;
 state.startingPlayer = state.currentPlayer;
 
+function ensureOpeningHandsOfFour() {
+  PLAYER_NAMES.forEach((name) => {
+    const hand = state.players[name]?.hand;
+    if (!hand) return;
+    while (hand.length < 4 && state.drawPile.length > 0) hand.push(state.drawPile.pop());
+  });
+}
+
 function resetSetupPhase() {
+  ensureOpeningHandsOfFour();
   state.phase = "setup";
   state.setupReady = Object.fromEntries(PLAYER_NAMES.map((name) => [name, false]));
   state.setupSelection = null;
@@ -118,7 +127,7 @@ function renderSetupActions() {
   hint.className = "setup-hint";
   hint.textContent = state.setupReady[state.viewer]
     ? "Waiting for the others"
-    : "Click a hand card, then click a face-up table card to swap. Repeat as needed, then press READY.";
+    : `Opening hand: ${state.players[state.viewer].hand.length} cards. Click a hand card, then click a face-up table card to swap. Repeat as needed, then press READY.`;
   actions.append(hint);
 }
 
@@ -130,7 +139,7 @@ function renderSetupStatus() {
   } else if (state.setupReady[state.viewer]) {
     statusText.textContent = `Setup — ready${readyNames.length ? ` (${readyNames.join(", ")})` : ""}. Switch View As to prepare another player.`;
   } else {
-    statusText.textContent = "Setup — click a hand card, then a face-up table card to swap; press READY when happy.";
+    statusText.textContent = `Setup — ${state.players[state.viewer].hand.length} cards in hand. Arrange your face-up table cards, then press READY.`;
   }
 }
 
