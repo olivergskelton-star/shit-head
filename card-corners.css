@@ -1,19 +1,24 @@
-/* Face-up table cards use the same top-left index treatment as held cards. */
-.face-row .card:not(.card-back) {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  text-align: left;
-  padding: 9px 7px;
-  line-height: .92;
-  letter-spacing: -.035em;
+/* Face-up table cards use the same top-left index treatment as held cards.
+   This file is loaded last; keep these declarations authoritative. */
+
+#playerSeat .self-face-row .face-stack > .card:not(.card-back),
+.seat-opponent .face-row .face-stack > .card:not(.card-back) {
+  display: flex !important;
+  place-items: initial !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
+  box-sizing: border-box !important;
+  padding: 9px 7px !important;
+  line-height: .92 !important;
+  letter-spacing: -.035em !important;
 }
 
-.self-face-row .card:not(.card-back) {
-  font-size: clamp(1.3rem, 2.2vw, 1.7rem);
+#playerSeat .self-face-row .face-stack > .card:not(.card-back) {
+  font-size: clamp(1.3rem, 2.2vw, 1.7rem) !important;
 }
 
-.seat-opponent .face-row .card:not(.card-back) {
-  padding: 7px 6px;
-  font-size: .95rem;
+.seat-opponent .face-row .face-stack > .card:not(.card-back) {
+  padding: 7px 6px !important;
+  font-size: .95rem !important;
 }
