@@ -4,13 +4,30 @@
    Centre piles own the upper-middle of the felt; the player's table cards
    stay in their own lower band. */
 .centre-zone {
-  top: 34%;
+  top: 32%;
   gap: 28px;
   align-items: flex-start;
 }
 
 .self-table-zone {
-  bottom: 22%;
+  bottom: 20%;
+}
+
+/* Labels belong to their pile, not in the player's table-card band. */
+.centre-zone .pile-wrap {
+  position: relative;
+  padding-top: 22px;
+}
+
+.centre-zone .pile-label {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  white-space: nowrap;
+  line-height: 1;
+  z-index: 8;
 }
 
 .pile-burn {
@@ -25,6 +42,16 @@
   opacity: .16;
   border-style: dashed;
 }
+
+/* The physical near rail must never visually cut through the held cards. */
+.table::after {
+  z-index: 1 !important;
+  opacity: .42;
+}
+
+.seat-player { z-index: 30; }
+.hand { z-index: 100; }
+.hand button.card { z-index: calc(110 + var(--card-index)); }
 
 .pickup-pile,
 .finish-turn {
@@ -43,17 +70,18 @@
 .finish-turn:disabled { opacity: .28; cursor: default; }
 
 @media (max-height: 760px) and (min-width: 701px) {
-  .centre-zone { top: 31%; }
-  .self-table-zone { bottom: 21%; }
+  .centre-zone { top: 29%; }
+  .self-table-zone { bottom: 19%; }
 }
 
 @media (max-width: 700px) {
   .centre-zone {
-    top: 31%;
+    top: 29%;
     gap: 14px;
   }
 
-  .self-table-zone { bottom: 23%; }
+  .centre-zone .pile-wrap { padding-top: 18px; }
+  .self-table-zone { bottom: 21%; }
 
   .pickup-pile,
   .finish-turn {
