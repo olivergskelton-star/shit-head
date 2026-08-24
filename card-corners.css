@@ -18,7 +18,41 @@
   font-size: clamp(1.3rem, 2.2vw, 1.7rem) !important;
 }
 
+/* Opponents' three table cards need to be readable across the table.
+   Grow the entire stack, including the face-down card underneath, but leave
+   the compact held-hand backs alone. */
+.seat-opponent .face-row {
+  gap: 10px !important;
+}
+
+.seat-opponent .face-row .face-stack {
+  width: 60px !important;
+  height: 84px !important;
+}
+
+.seat-opponent .face-row .face-stack > .card {
+  width: 60px !important;
+  height: 84px !important;
+  aspect-ratio: auto !important;
+}
+
 .seat-opponent .face-row .face-stack > .card:not(.card-back) {
-  padding: 7px 6px !important;
-  font-size: .95rem !important;
+  padding: 8px 7px !important;
+  font-size: 1.15rem !important;
+}
+
+@media (max-width: 700px) {
+  .seat-opponent .face-row { gap: 6px !important; }
+  .seat-opponent .face-row .face-stack {
+    width: 52px !important;
+    height: 73px !important;
+  }
+  .seat-opponent .face-row .face-stack > .card {
+    width: 52px !important;
+    height: 73px !important;
+  }
+  .seat-opponent .face-row .face-stack > .card:not(.card-back) {
+    padding: 7px 6px !important;
+    font-size: 1rem !important;
+  }
 }
