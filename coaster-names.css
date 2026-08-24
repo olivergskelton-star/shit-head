@@ -1,0 +1,60 @@
+/* Wrapped coaster joke names. */
+.beer-mat-name-ring .name-top,
+.beer-mat-name-ring .name-bottom {
+  font-size: 10.5px;
+  letter-spacing: .55px;
+}
+
+.beer-mat-name-ring.wrapped-name .name-top,
+.beer-mat-name-ring.wrapped-name .name-bottom {
+  font-size: 9.5px;
+  letter-spacing: .42px;
+}
+
+.beer-mat-name-ring.very-long-name .name-top,
+.beer-mat-name-ring.very-long-name .name-bottom {
+  font-size: 8.4px;
+  letter-spacing: .25px;
+}
+
+.self-beer-mat .beer-mat-name-ring .name-top,
+.self-beer-mat .beer-mat-name-ring .name-bottom {
+  font-size: 10.5px;
+}
+
+.self-beer-mat .beer-mat-name-ring.wrapped-name .name-top,
+.self-beer-mat .beer-mat-name-ring.wrapped-name .name-bottom {
+  font-size: 9.8px;
+}
+
+.self-beer-mat .beer-mat-name-ring.very-long-name .name-top,
+.self-beer-mat .beer-mat-name-ring.very-long-name .name-bottom {
+  font-size: 8.8px;
+}
+
+.opponent-beer-mat .beer-mat-name-ring .name-top,
+.opponent-beer-mat .beer-mat-name-ring .name-bottom {
+  font-size: 9.2px;
+  letter-spacing: .35px;
+}
+
+.opponent-beer-mat .beer-mat-name-ring.very-long-name .name-top,
+.opponent-beer-mat .beer-mat-name-ring.very-long-name .name-bottom {
+  font-size: 7.6px;
+  letter-spacing: .15px;
+}
+
+/* Keep the central score/drink label clear when a name uses both arcs. */
+.beer-mat:has(.beer-mat-name-ring.wrapped-name) .beer-mat-score {
+  margin-top: 0;
+}
+
+.beer-mat:has(.beer-mat-name-ring.wrapped-name) .beer-mat-label {
+  bottom: 14px;
+  font-size: .48rem;
+}
+
+.self-beer-mat:has(.beer-mat-name-ring.wrapped-name) .beer-mat-label {
+  bottom: 18px;
+  font-size: .56rem;
+}
