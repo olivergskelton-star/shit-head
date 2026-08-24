@@ -2,8 +2,11 @@
 // Loaded after engine-v2.js. In the current single-browser test harness, use View As
 // to configure each player and mark them READY.
 
+const STARTING_RANK_ORDER = ["4", "5", "6", "7", "8", "9", "J", "Q", "K", "A", "2", "3", "10"];
+
 state.phase = "setup";
 state.setupReady = Object.fromEntries(PLAYER_NAMES.map((name) => [name, false]));
+state.setupReadyOrder = [];
 state.setupSelection = null;
 state.startingPlayer = state.currentPlayer;
 
@@ -19,14 +22,29 @@ function resetSetupPhase() {
   ensureOpeningHandsOfFour();
   state.phase = "setup";
   state.setupReady = Object.fromEntries(PLAYER_NAMES.map((name) => [name, false]));
+  state.setupReadyOrder = [];
   state.setupSelection = null;
-  state.startingPlayer = state.currentPlayer;
+  state.startingPlayer = null;
   state.followUpRank = null;
   state.selected = [];
 }
 
 function setupAllReady() {
   return PLAYER_NAMES.every((name) => state.setupReady[name]);
+}
+
+function determineStartingPlayer() {
+  for (const rank of STARTING_RANK_ORDER) {
+    const holders = PLAYER_NAMES.filter((name) =>
+      state.players[name]?.hand.some((card) => card.rank === rank)
+    );
+    if (!holders.length) continue;
+
+    const winner = state.setupReadyOrder.find((name) => holders.includes(name)) || holders[0];
+    return { name: winner, rank, holders };
+  }
+
+  return { name: state.setupReadyOrder[0] || PLAYER_NAMES[0], rank: null, holders: [] };
 }
 
 function selectSetupCard(name, zone, index) {
@@ -68,14 +86,23 @@ function selectSetupCard(name, zone, index) {
 }
 
 function markSetupReady(name) {
-  if (state.phase !== "setup" || name !== state.viewer) return;
+  if (state.phase !== "setup" || name !== state.viewer || state.setupReady[name]) return;
   state.setupReady[name] = true;
+  state.setupReadyOrder.push(name);
   state.setupSelection = null;
 
   if (setupAllReady()) {
+    const start = determineStartingPlayer();
     state.phase = "play";
-    state.currentPlayer = state.startingPlayer;
-    state.lastMessage = `Everyone is ready — ${publicName(state.currentPlayer)} starts.`;
+    state.startingPlayer = start.name;
+    state.currentPlayer = start.name;
+
+    const tied = start.holders.length > 1;
+    state.lastMessage = start.rank
+      ? tied
+        ? `${publicName(start.name)} starts with the lowest rank (${start.rank}); READY order broke the tie.`
+        : `${publicName(start.name)} starts — they hold the lowest rank (${start.rank}).`
+      : `${publicName(start.name)} starts.`;
   } else {
     const waiting = PLAYER_NAMES.filter((playerName) => !state.setupReady[playerName]).map(publicName);
     state.lastMessage = `${publicName(name)} is ready. Waiting for ${waiting.join(" and ")}.`;
@@ -126,18 +153,18 @@ function renderSetupActions() {
   const hint = document.createElement("span");
   hint.className = "setup-hint";
   hint.textContent = state.setupReady[state.viewer]
-    ? "Waiting for the others"
+    ? `Ready #${state.setupReadyOrder.indexOf(state.viewer) + 1}. Waiting for the others.`
     : `Opening hand: ${state.players[state.viewer].hand.length} cards. Click a hand card, then click a face-up table card to swap. Repeat as needed, then press READY.`;
   actions.append(hint);
 }
 
 function renderSetupStatus() {
   if (state.phase !== "setup") return;
-  const readyNames = PLAYER_NAMES.filter((name) => state.setupReady[name]).map(publicName);
+  const readyNames = state.setupReadyOrder.map(publicName);
   if (state.lastMessage) {
     statusText.textContent = state.lastMessage;
   } else if (state.setupReady[state.viewer]) {
-    statusText.textContent = `Setup — ready${readyNames.length ? ` (${readyNames.join(", ")})` : ""}. Switch View As to prepare another player.`;
+    statusText.textContent = `Setup — ready order: ${readyNames.join(" → ")}. Switch View As to prepare another player.`;
   } else {
     statusText.textContent = `Setup — ${state.players[state.viewer].hand.length} cards in hand. Arrange your face-up table cards, then press READY.`;
   }
