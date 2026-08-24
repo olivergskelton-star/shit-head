@@ -30,8 +30,10 @@ function renderCompactOpponent(container, name) {
   player.faceUp.forEach((card, index) => {
     const stack = document.createElement("div");
     stack.className = "face-stack";
-    if (player.faceDown[index]) stack.append(makeBack({ small: true }));
-    stack.append(makeCard(card, { small: true }));
+    // Table cards must NOT use the compact `small` class. Their dimensions are
+    // controlled by the final table-card CSS so they stay readable across the table.
+    if (player.faceDown[index]) stack.append(makeBack());
+    stack.append(makeCard(card));
     tableCards.append(stack);
   });
 
