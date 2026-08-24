@@ -2,6 +2,11 @@ const PLAYER_NAMES = ["Oliver", "Dan", "Chris"];
 const SUITS = ["♠", "♥", "♦", "♣"];
 const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 const NORMAL_ORDER = ["4", "5", "6", "7", "8", "9", "J", "Q", "K", "A"];
+const PLAYER_PROFILE = {
+  Oliver: { score: 0, drink: "Wine", icon: "🍷" },
+  Dan: { score: 0, drink: "Beer", icon: "🍺" },
+  Chris: { score: 0, drink: "Cocktail", icon: "🍸" },
+};
 
 const state = {
   viewer: "Oliver",
@@ -38,13 +43,8 @@ function shuffle(cards) {
   return copy;
 }
 
-function cardText(card) {
-  return `${card.rank}${card.suit}`;
-}
-
-function isRed(card) {
-  return card.suit === "♥" || card.suit === "♦";
-}
+function cardText(card) { return `${card.rank}${card.suit}`; }
+function isRed(card) { return card.suit === "♥" || card.suit === "♦"; }
 
 function dealNewGame() {
   const deck = shuffle(buildDeck());
@@ -52,19 +52,11 @@ function dealNewGame() {
   state.selected = [];
   state.lastMessage = "";
   state.currentPlayer = PLAYER_NAMES[Math.floor(Math.random() * PLAYER_NAMES.length)];
-  state.players = Object.fromEntries(
-    PLAYER_NAMES.map((name) => [name, { faceDown: [], faceUp: [], hand: [] }])
-  );
+  state.players = Object.fromEntries(PLAYER_NAMES.map((name) => [name, { faceDown: [], faceUp: [], hand: [] }]));
 
-  for (let round = 0; round < 3; round += 1) {
-    PLAYER_NAMES.forEach((name) => state.players[name].faceDown.push(deck.pop()));
-  }
-  for (let round = 0; round < 3; round += 1) {
-    PLAYER_NAMES.forEach((name) => state.players[name].faceUp.push(deck.pop()));
-  }
-  for (let round = 0; round < 3; round += 1) {
-    PLAYER_NAMES.forEach((name) => state.players[name].hand.push(deck.pop()));
-  }
+  for (let round = 0; round < 3; round += 1) PLAYER_NAMES.forEach((name) => state.players[name].faceDown.push(deck.pop()));
+  for (let round = 0; round < 3; round += 1) PLAYER_NAMES.forEach((name) => state.players[name].faceUp.push(deck.pop()));
+  for (let round = 0; round < 3; round += 1) PLAYER_NAMES.forEach((name) => state.players[name].hand.push(deck.pop()));
 
   state.drawPile = deck;
   render();
@@ -72,11 +64,7 @@ function dealNewGame() {
 
 function seatingForViewer() {
   const i = PLAYER_NAMES.indexOf(state.viewer);
-  return {
-    self: PLAYER_NAMES[i],
-    left: PLAYER_NAMES[(i + 1) % PLAYER_NAMES.length],
-    right: PLAYER_NAMES[(i + 2) % PLAYER_NAMES.length],
-  };
+  return { self: PLAYER_NAMES[i], left: PLAYER_NAMES[(i + 1) % 3], right: PLAYER_NAMES[(i + 2) % 3] };
 }
 
 function makeCard(card, { small = false, button = false, selected = false, onClick } = {}) {
@@ -97,14 +85,24 @@ function makeBack({ small = false } = {}) {
   return el;
 }
 
+function makeBeerMat(name, extraClass = "") {
+  const profile = PLAYER_PROFILE[name];
+  const mat = document.createElement("div");
+  mat.className = `beer-mat ${extraClass}`.trim();
+  mat.innerHTML = `
+    <span class="beer-mat-drink" aria-hidden="true">${profile.icon}</span>
+    <span class="beer-mat-name">${name}</span>
+    <span class="beer-mat-score">${profile.score}</span>
+    <span class="beer-mat-label">${profile.drink}</span>
+  `;
+  mat.setAttribute("aria-label", `${name}, score ${profile.score}, drinking ${profile.drink}`);
+  return mat;
+}
+
 function renderOpponent(container, name) {
   const player = state.players[name];
   container.replaceChildren();
   container.classList.toggle("active", state.currentPlayer === name);
-
-  const plate = document.createElement("div");
-  plate.className = "nameplate";
-  plate.innerHTML = `<span class="turn-dot"></span><span>${name}</span>`;
 
   const hand = document.createElement("div");
   hand.className = "card-row opponent-hand";
@@ -120,7 +118,7 @@ function renderOpponent(container, name) {
     tableCards.append(stack);
   });
 
-  container.append(plate, hand, tableCards);
+  container.append(makeBeerMat(name, "opponent-beer-mat"), hand, tableCards);
 }
 
 function renderSelf(name) {
@@ -171,47 +169,29 @@ function renderSelf(name) {
 
   const selectionHint = document.createElement("span");
   selectionHint.className = "selection-hint";
-  selectionHint.textContent = state.selected.length > 1
-    ? `${state.selected.length} matching cards`
-    : "Selected";
-
+  selectionHint.textContent = state.selected.length > 1 ? `${state.selected.length} matching cards` : "Selected";
   actions.append(playButton, selectionHint);
 
+  const selfIdentity = document.createElement("div");
+  selfIdentity.className = "self-identity-row";
   const plate = document.createElement("div");
   plate.className = "nameplate self-nameplate";
   plate.innerHTML = `<span class="turn-dot"></span><span>${name} · You</span>`;
+  selfIdentity.append(plate, makeBeerMat(name, "self-beer-mat"));
 
-  playerSeat.append(tableZone, hand, actions, plate);
+  playerSeat.append(tableZone, selfIdentity, hand, actions);
 }
 
 function toggleCardSelection(name, index) {
-  if (name !== state.currentPlayer) {
-    state.lastMessage = `It’s ${state.currentPlayer}’s turn.`;
-    render();
-    return;
-  }
-
+  if (name !== state.currentPlayer) { state.lastMessage = `It’s ${state.currentPlayer}’s turn.`; render(); return; }
   const hand = state.players[name].hand;
   const card = hand[index];
   if (!card) return;
-
-  if (state.selected.includes(index)) {
-    state.selected = state.selected.filter((i) => i !== index);
-    state.lastMessage = "";
-    render();
-    return;
-  }
-
+  if (state.selected.includes(index)) { state.selected = state.selected.filter((i) => i !== index); state.lastMessage = ""; render(); return; }
   if (state.selected.length) {
     const first = hand[state.selected[0]];
-    if (first && first.rank !== card.rank) {
-      state.selected = [index];
-      state.lastMessage = "Only matching cards can be played together.";
-      render();
-      return;
-    }
+    if (first && first.rank !== card.rank) { state.selected = [index]; state.lastMessage = "Only matching cards can be played together."; render(); return; }
   }
-
   state.selected.push(index);
   state.selected.sort((a, b) => a - b);
   state.lastMessage = "";
@@ -224,24 +204,16 @@ function nextPlayer() {
   state.selected = [];
 }
 
-function topDiscard() {
-  return state.discard[state.discard.length - 1] || null;
-}
-
-function normalRankValue(rank) {
-  return NORMAL_ORDER.indexOf(rank);
-}
+function topDiscard() { return state.discard[state.discard.length - 1] || null; }
+function normalRankValue(rank) { return NORMAL_ORDER.indexOf(rank); }
 
 function canPlayRank(rank) {
   const top = topDiscard();
   if (!top) return true;
   if (rank === "2" || rank === "3" || rank === "10") return true;
   if (top.rank === "2") return true;
-  if (top.rank === "7") {
-    return normalRankValue(rank) !== -1 && normalRankValue(rank) <= normalRankValue("7");
-  }
+  if (top.rank === "7") return normalRankValue(rank) !== -1 && normalRankValue(rank) <= normalRankValue("7");
   if (top.rank === "3") return true;
-
   const candidate = normalRankValue(rank);
   const target = normalRankValue(top.rank);
   if (candidate === -1 || target === -1) return false;
@@ -265,60 +237,31 @@ function shouldClearPile(rank) {
 }
 
 function refillHand(player) {
-  while (player.hand.length < 3 && state.drawPile.length > 0) {
-    player.hand.push(state.drawPile.pop());
-  }
+  while (player.hand.length < 3 && state.drawPile.length > 0) player.hand.push(state.drawPile.pop());
 }
 
 function playSelected(name) {
-  if (name !== state.currentPlayer) {
-    state.lastMessage = `It’s ${state.currentPlayer}’s turn.`;
-    render();
-    return;
-  }
-
+  if (name !== state.currentPlayer) { state.lastMessage = `It’s ${state.currentPlayer}’s turn.`; render(); return; }
   const player = state.players[name];
   const indices = [...state.selected].sort((a, b) => a - b);
   if (!indices.length) return;
-
   const cards = indices.map((index) => player.hand[index]).filter(Boolean);
   if (!cards.length) return;
-
   const rank = cards[0].rank;
-  if (!cards.every((card) => card.rank === rank)) {
-    state.lastMessage = "Only matching ranks can be played together.";
-    render();
-    return;
-  }
+  if (!cards.every((card) => card.rank === rank)) { state.lastMessage = "Only matching ranks can be played together."; render(); return; }
+  if (!canPlayRank(rank)) { state.lastMessage = `${cards.map(cardText).join(", ")} can’t go on ${cardText(topDiscard())}.`; render(); return; }
 
-  if (!canPlayRank(rank)) {
-    state.lastMessage = `${cards.map(cardText).join(", ")} can’t go on ${cardText(topDiscard())}.`;
-    render();
-    return;
-  }
-
-  for (const index of [...indices].sort((a, b) => b - a)) {
-    player.hand.splice(index, 1);
-  }
+  for (const index of [...indices].sort((a, b) => b - a)) player.hand.splice(index, 1);
   cards.forEach((card) => state.discard.push(card));
 
   const cleared = shouldClearPile(rank);
   if (cleared) {
     state.discard = [];
-    state.lastMessage = rank === "10"
-      ? `${name} cleared the pile with a 10 — go again.`
-      : rank === "8"
-        ? `${name} cleared the pile with three 8s — go again.`
-        : `${name} cleared the pile with four ${rank}s — go again.`;
-  } else if (rank === "2") {
-    state.lastMessage = `${name} reset the pile with a 2.`;
-  } else if (rank === "7") {
-    state.lastMessage = `${name} played a 7 — ${PLAYER_NAMES[(PLAYER_NAMES.indexOf(name) + 1) % PLAYER_NAMES.length]} must play 7 or lower.`;
-  } else if (rank === "3") {
-    state.lastMessage = `${name} played a 3.`;
-  } else {
-    state.lastMessage = `${name} played ${cards.length > 1 ? cards.length + " × " + rank : cardText(cards[0])}.`;
-  }
+    state.lastMessage = rank === "10" ? `${name} cleared the pile with a 10 — go again.` : rank === "8" ? `${name} cleared the pile with three 8s — go again.` : `${name} cleared the pile with four ${rank}s — go again.`;
+  } else if (rank === "2") state.lastMessage = `${name} reset the pile with a 2.`;
+  else if (rank === "7") state.lastMessage = `${name} played a 7 — ${PLAYER_NAMES[(PLAYER_NAMES.indexOf(name) + 1) % PLAYER_NAMES.length]} must play 7 or lower.`;
+  else if (rank === "3") state.lastMessage = `${name} played a 3.`;
+  else state.lastMessage = `${name} played ${cards.length > 1 ? cards.length + " × " + rank : cardText(cards[0])}.`;
 
   refillHand(player);
   state.selected = [];
@@ -327,16 +270,8 @@ function playSelected(name) {
 }
 
 function drawForViewer() {
-  if (state.viewer !== state.currentPlayer) {
-    state.lastMessage = `It’s ${state.currentPlayer}’s turn.`;
-    render();
-    return;
-  }
-  if (!state.drawPile.length) {
-    state.lastMessage = "The draw pile is empty.";
-    render();
-    return;
-  }
+  if (state.viewer !== state.currentPlayer) { state.lastMessage = `It’s ${state.currentPlayer}’s turn.`; render(); return; }
+  if (!state.drawPile.length) { state.lastMessage = "The draw pile is empty."; render(); return; }
   state.players[state.viewer].hand.push(state.drawPile.pop());
   state.lastMessage = `${state.viewer} drew a card.`;
   render();
@@ -345,12 +280,10 @@ function drawForViewer() {
 function renderDiscard() {
   discardPile.replaceChildren();
   const top = topDiscard();
-  if (top) {
-    discardPile.append(makeCard(top));
-  } else {
+  if (top) discardPile.append(makeCard(top));
+  else {
     const placeholder = document.createElement("span");
     placeholder.className = "card empty-pile";
-    placeholder.textContent = "";
     discardPile.append(placeholder);
   }
   drawCount.textContent = state.drawPile.length;
@@ -362,14 +295,7 @@ function render() {
   renderOpponent(opponentRight, seats.right);
   renderSelf(seats.self);
   renderDiscard();
-
-  if (state.lastMessage) {
-    statusText.textContent = state.lastMessage;
-  } else {
-    statusText.textContent = state.currentPlayer === state.viewer
-      ? "Your turn — choose a card."
-      : `${state.currentPlayer}’s turn.`;
-  }
+  statusText.textContent = state.lastMessage || (state.currentPlayer === state.viewer ? "Your turn — choose a card." : `${state.currentPlayer}’s turn.`);
 }
 
 PLAYER_NAMES.forEach((name) => {
@@ -380,18 +306,8 @@ PLAYER_NAMES.forEach((name) => {
 });
 viewerSelect.value = state.viewer;
 
-themeSelect.addEventListener("change", () => {
-  state.theme = themeSelect.value;
-  document.body.dataset.theme = state.theme;
-});
-
-viewerSelect.addEventListener("change", () => {
-  state.viewer = viewerSelect.value;
-  state.selected = [];
-  state.lastMessage = "";
-  render();
-});
-
+themeSelect.addEventListener("change", () => { state.theme = themeSelect.value; document.body.dataset.theme = state.theme; });
+viewerSelect.addEventListener("change", () => { state.viewer = viewerSelect.value; state.selected = []; state.lastMessage = ""; render(); });
 newGameBtn.addEventListener("click", dealNewGame);
 drawPileButton.addEventListener("click", drawForViewer);
 
