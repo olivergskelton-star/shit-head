@@ -1,7 +1,8 @@
-// Engine v2: transparent 3s, burn pile, voluntary pickup.
-// Loaded after app.js so we can harden game dynamics without disturbing the table prototype.
+// Engine v2: transparent 3s, burn pile, voluntary pickup, same-rank follow-up priority.
+// Loaded after app.js so game dynamics can evolve independently of the table prototype.
 
 state.burnPile = [];
+state.followUpRank = null;
 
 function effectiveTopDiscard() {
   for (let i = state.discard.length - 1; i >= 0; i -= 1) {
@@ -11,17 +12,13 @@ function effectiveTopDiscard() {
 }
 
 canPlayRank = function canPlayRankV2(rank) {
-  // 2, 3 and 10 can always be played.
+  if (state.followUpRank && rank !== state.followUpRank) return false;
   if (rank === "2" || rank === "3" || rank === "10") return true;
 
-  // 3s are transparent: judge against the last non-3 beneath them.
   const targetCard = effectiveTopDiscard();
   if (!targetCard) return true;
-
-  // A 2 resets the pile, even if one or more 3s sit on top of it.
   if (targetCard.rank === "2") return true;
 
-  // A 7 forces the next ordinary card to be 7 or lower.
   if (targetCard.rank === "7") {
     const candidate = normalRankValue(rank);
     return candidate !== -1 && candidate <= normalRankValue("7");
@@ -39,9 +36,28 @@ function burnDiscardPile() {
   state.discard = [];
 }
 
+function hasFollowUpCard(name, rank) {
+  return state.players[name].hand.some((card) => card.rank === rank);
+}
+
+function finishTurn(name) {
+  if (name !== state.currentPlayer || !state.followUpRank) return;
+  const rank = state.followUpRank;
+  state.followUpRank = null;
+  state.selected = [];
+  state.lastMessage = `${publicName(name)} finished the ${rank}s.`;
+  nextPlayer();
+  render();
+}
+
 function pickupDiscard(name) {
   if (name !== state.currentPlayer) {
     state.lastMessage = `It’s ${publicName(state.currentPlayer)}’s turn.`;
+    render();
+    return;
+  }
+  if (state.followUpRank) {
+    state.lastMessage = `You’ve already played — add another ${state.followUpRank} or finish the turn.`;
     render();
     return;
   }
@@ -60,6 +76,21 @@ function pickupDiscard(name) {
   render();
 }
 
+const toggleCardSelectionV1 = toggleCardSelection;
+toggleCardSelection = function toggleCardSelectionV2(name, index) {
+  if (state.followUpRank) {
+    if (name !== state.currentPlayer) return;
+    const card = state.players[name].hand[index];
+    if (!card) return;
+    if (card.rank !== state.followUpRank) {
+      state.lastMessage = `Only another ${state.followUpRank} can be added before the turn passes.`;
+      render();
+      return;
+    }
+  }
+  toggleCardSelectionV1(name, index);
+};
+
 playSelected = function playSelectedV2(name) {
   if (name !== state.currentPlayer) {
     state.lastMessage = `It’s ${publicName(state.currentPlayer)}’s turn.`;
@@ -76,6 +107,12 @@ playSelected = function playSelectedV2(name) {
   const rank = cards[0].rank;
   if (!cards.every((card) => card.rank === rank)) {
     state.lastMessage = "Only matching ranks can be played together.";
+    render();
+    return;
+  }
+
+  if (state.followUpRank && rank !== state.followUpRank) {
+    state.lastMessage = `Only another ${state.followUpRank} can be added before the turn passes.`;
     render();
     return;
   }
@@ -98,34 +135,41 @@ playSelected = function playSelectedV2(name) {
   if (cleared) {
     const burnedCount = state.discard.length;
     burnDiscardPile();
+    state.followUpRank = null;
     state.lastMessage = rank === "10"
       ? `${n} burned ${burnedCount} cards with a 10 — go again.`
       : rank === "8"
         ? `${n} burned the pile with three 8s — go again.`
         : `${n} burned the pile with four ${rank}s — go again.`;
-  } else if (rank === "2") {
-    state.lastMessage = `${n} reset the pile with a 2.`;
-  } else if (rank === "7") {
-    state.lastMessage = `${n} played a 7 — ${publicName(PLAYER_NAMES[(PLAYER_NAMES.indexOf(name) + 1) % PLAYER_NAMES.length])} must play 7 or lower.`;
-  } else if (rank === "3") {
-    const target = effectiveTopDiscard();
-    state.lastMessage = target
-      ? `${n} played a transparent 3 — ${cardText(target)} is still the live card.`
-      : `${n} played a transparent 3.`;
-  } else {
-    state.lastMessage = `${n} played ${cards.length > 1 ? cards.length + " × " + rank : cardText(cards[0])}.`;
+    refillHand(player);
+    state.selected = [];
+    render();
+    return;
   }
 
   refillHand(player);
   state.selected = [];
-  if (!cleared) nextPlayer();
+
+  if (hasFollowUpCard(name, rank)) {
+    state.followUpRank = rank;
+    state.lastMessage = `${n} played ${cards.length > 1 ? cards.length + " × " + rank : cardText(cards[0])}. Another ${rank} is available — add it or finish turn.`;
+  } else {
+    state.followUpRank = null;
+    if (rank === "2") state.lastMessage = `${n} reset the pile with a 2.`;
+    else if (rank === "7") state.lastMessage = `${n} played a 7 — ${publicName(PLAYER_NAMES[(PLAYER_NAMES.indexOf(name) + 1) % PLAYER_NAMES.length])} must play 7 or lower.`;
+    else if (rank === "3") {
+      const target = effectiveTopDiscard();
+      state.lastMessage = target ? `${n} played a transparent 3 — ${cardText(target)} is still the live card.` : `${n} played a transparent 3.`;
+    } else state.lastMessage = `${n} played ${cards.length > 1 ? cards.length + " × " + rank : cardText(cards[0])}.`;
+    nextPlayer();
+  }
+
   render();
 };
 
 function ensureBurnPileUi() {
   const centre = document.querySelector(".centre-zone");
   if (!centre || document.querySelector("#burnPile")) return;
-
   const wrap = document.createElement("div");
   wrap.className = "pile-wrap burn-wrap";
   wrap.innerHTML = `
@@ -142,8 +186,10 @@ function enhanceTurnActions() {
   const actions = playerSeat.querySelector(".play-actions");
   if (!actions) return;
 
-  const canPickup = state.currentPlayer === state.viewer && state.discard.length > 0;
-  if (canPickup) actions.classList.add("visible");
+  const isMyTurn = state.currentPlayer === state.viewer;
+  const followUp = isMyTurn && !!state.followUpRank;
+  const canPickup = isMyTurn && !state.followUpRank && state.discard.length > 0;
+  if (canPickup || followUp) actions.classList.add("visible");
 
   let pickup = actions.querySelector(".pickup-pile");
   if (!pickup) {
@@ -153,8 +199,21 @@ function enhanceTurnActions() {
     pickup.textContent = "PICK UP";
     actions.append(pickup);
   }
+  pickup.hidden = followUp;
   pickup.disabled = !canPickup;
   pickup.onclick = () => pickupDiscard(state.viewer);
+
+  let finish = actions.querySelector(".finish-turn");
+  if (!finish) {
+    finish = document.createElement("button");
+    finish.type = "button";
+    finish.className = "finish-turn";
+    finish.textContent = "FINISH TURN";
+    actions.append(finish);
+  }
+  finish.hidden = !followUp;
+  finish.disabled = !followUp;
+  finish.onclick = () => finishTurn(state.viewer);
 }
 
 function renderBurnPile() {
@@ -173,9 +232,9 @@ render = function renderV2() {
   renderBurnPile();
 };
 
-// The original New deal listener runs first. This listener resets v2-only state afterwards.
 newGameBtn.addEventListener("click", () => {
   state.burnPile = [];
+  state.followUpRank = null;
   render();
 });
 
