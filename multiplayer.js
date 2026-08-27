@@ -17,15 +17,20 @@
     const snap = clone(state);
     delete snap.viewer;
     delete snap.selected;
+    // Setup selection is private UI state. Sharing it makes one player's
+    // half-completed swap appear on another player's browser.
+    delete snap.setupSelection;
     return snap;
   }
   function applySnapshot(snap) {
     if (!snap || typeof snap !== "object") return;
     const viewer = state.viewer;
+    const setupSelection = state.setupSelection;
     MP.suppressPublish = true;
     Object.keys(snap).forEach((key) => { state[key] = clone(snap[key]); });
     state.viewer = viewer;
     state.selected = [];
+    state.setupSelection = state.phase === "setup" ? setupSelection : null;
     if (state.theme) {
       themeSelect.value = state.theme;
       document.body.dataset.theme = state.theme;
@@ -251,6 +256,56 @@
     updateRoomUi();
   }
 
+  function finishSetupOnHostIfReady() {
+    if (state.phase !== "setup" || !PLAYER_NAMES.every((name) => state.setupReady?.[name])) return false;
+    if (typeof determineStartingPlayer !== "function") return false;
+
+    const start = determineStartingPlayer();
+    state.phase = "play";
+    state.startingPlayer = start.name;
+    state.currentPlayer = start.name;
+    state.setupSelection = null;
+
+    const tied = start.holders.length > 1;
+    state.lastMessage = start.rank
+      ? tied
+        ? `${publicName(start.name)} starts with the lowest hand card (${start.rank}); READY order broke the tie.`
+        : `${publicName(start.name)} starts with the lowest hand card (${start.rank}).`
+      : `${publicName(start.name)} starts.`;
+    return true;
+  }
+
+  function mergeSetupProposal(player, proposed) {
+    if (!proposed || !proposed.players?.[player] || state.phase !== "setup") return false;
+
+    MP.suppressPublish = true;
+    // During setup players act concurrently. Only accept this browser's own
+    // hand/table and ready flag; never replace the other two players' setup.
+    state.players[player] = clone(proposed.players[player]);
+    if (proposed.displayNames?.[player]) state.displayNames[player] = proposed.displayNames[player];
+
+    const wasReady = !!state.setupReady?.[player];
+    const isReady = !!proposed.setupReady?.[player];
+    if (isReady && !wasReady) {
+      state.setupReady[player] = true;
+      if (!state.setupReadyOrder.includes(player)) state.setupReadyOrder.push(player);
+    }
+
+    if (!finishSetupOnHostIfReady()) {
+      if (isReady && !wasReady) {
+        const waiting = PLAYER_NAMES.filter((name) => !state.setupReady[name]).map(publicName);
+        state.lastMessage = `${publicName(player)} is ready. Waiting for ${waiting.join(" and ")}.`;
+      } else if (proposed.lastMessage) {
+        state.lastMessage = proposed.lastMessage;
+      }
+    }
+
+    render();
+    MP.suppressPublish = false;
+    updateRoomUi();
+    return true;
+  }
+
   function handleHostConnection(conn) {
     MP.connections.set(conn, { player: null });
     conn.on("data", (data) => {
@@ -271,6 +326,14 @@
       if (data.type === "state-proposal") {
         const meta = MP.connections.get(conn);
         if (!meta?.player || meta.player !== data.player) return;
+
+        // Setup is the only phase where multiple players legitimately change
+        // state at the same time, so merge by player instead of last-write-wins.
+        if (state.phase === "setup" && mergeSetupProposal(meta.player, data.state)) {
+          broadcast({ type: "state", state: snapshotState() });
+          return;
+        }
+
         applySnapshot(data.state);
         broadcast({ type: "state", state: snapshotState() });
       }
