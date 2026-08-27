@@ -37,30 +37,35 @@ howToPlayDialog?.addEventListener("close", () => {
 (function loadMultiplayer() {
   const css = document.createElement("link");
   css.rel = "stylesheet";
-  css.href = "multiplayer.css?v=20260827-9";
+  css.href = "multiplayer.css?v=20260827-10";
   document.head.append(css);
 
   const peerScript = document.createElement("script");
   peerScript.src = "https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js";
   peerScript.onload = () => {
-    const multiplayerScript = document.createElement("script");
-    multiplayerScript.src = "multiplayer.js?v=20260827-9";
-    multiplayerScript.onload = () => {
-      const handshakeFix = document.createElement("script");
-      handshakeFix.src = "multiplayer-handshake-fix.js?v=20260827-5";
-      handshakeFix.onload = () => {
-        const lobbyUx = document.createElement("script");
-        lobbyUx.src = "multiplayer-lobby-ux.js?v=20260827-4";
-        lobbyUx.onload = () => {
-          const playSelectionFix = document.createElement("script");
-          playSelectionFix.src = "multiplayer-play-selection-fix-v2.js?v=20260827-3";
-          document.body.append(playSelectionFix);
+    const authoritativePlay = document.createElement("script");
+    authoritativePlay.src = "multiplayer-authoritative-play.js?v=20260827-1";
+    authoritativePlay.onload = () => {
+      const multiplayerScript = document.createElement("script");
+      multiplayerScript.src = "multiplayer.js?v=20260827-10";
+      multiplayerScript.onload = () => {
+        const handshakeFix = document.createElement("script");
+        handshakeFix.src = "multiplayer-handshake-fix.js?v=20260827-6";
+        handshakeFix.onload = () => {
+          const lobbyUx = document.createElement("script");
+          lobbyUx.src = "multiplayer-lobby-ux.js?v=20260827-5";
+          lobbyUx.onload = () => {
+            const playSelectionFix = document.createElement("script");
+            playSelectionFix.src = "multiplayer-play-selection-fix-v2.js?v=20260827-4";
+            document.body.append(playSelectionFix);
+          };
+          document.body.append(lobbyUx);
         };
-        document.body.append(lobbyUx);
+        document.body.append(handshakeFix);
       };
-      document.body.append(handshakeFix);
+      document.body.append(multiplayerScript);
     };
-    document.body.append(multiplayerScript);
+    document.body.append(authoritativePlay);
   };
   peerScript.onerror = () => console.warn("Shit Head multiplayer library could not be loaded.");
   document.body.append(peerScript);
