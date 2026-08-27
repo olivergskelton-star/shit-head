@@ -1,15 +1,18 @@
-// Multiplayer client card selection.
-// Selection stays private on the client; PLAY sends an intent to the HOST, which
-// executes the real game engine and broadcasts the authoritative result.
+// Multiplayer online card selection.
+// All online players use this same interaction layer. Clients send an intent to
+// the host; the host executes the existing game engine locally and broadcasts.
 (() => {
   let localSelected = [];
   let localRank = null;
   let awaitingHost = false;
 
-  function isOnlineClientTurn() {
-    const mp = window.ShitHeadMultiplayer;
-    return !!mp
-      && mp.status?.role === 'client'
+  function onlineRole() {
+    return window.ShitHeadMultiplayer?.status?.role || 'local';
+  }
+
+  function isOnlineTurn() {
+    const role = onlineRole();
+    return role !== 'local'
       && state.phase === 'play'
       && state.currentPlayer === state.viewer;
   }
@@ -25,7 +28,7 @@
   }
 
   function paintSelection() {
-    if (!isOnlineClientTurn()) {
+    if (!isOnlineTurn()) {
       awaitingHost = false;
       clearLocalSelection();
       return;
@@ -68,7 +71,7 @@
   }
 
   playerSeat.addEventListener('click', (event) => {
-    if (!isOnlineClientTurn() || awaitingHost) return;
+    if (!isOnlineTurn() || awaitingHost) return;
 
     const card = event.target.closest('.hand button.card');
     if (card) {
@@ -102,6 +105,17 @@
       event.stopImmediatePropagation();
 
       const indices = [...localSelected];
+      const role = onlineRole();
+
+      if (role === 'host') {
+        // Host is the authority: execute the same engine directly, then publish.
+        clearLocalSelection();
+        state.selected = indices;
+        playSelected(state.viewer);
+        window.ShitHeadMultiplayer?.publishState?.();
+        return;
+      }
+
       const sent = window.ShitHeadAuthoritativePlay?.send?.(state.viewer, indices);
       if (!sent) {
         statusText.textContent = 'Could not send the play to the host. Check the room connection.';
@@ -111,13 +125,12 @@
       awaitingHost = true;
       clearLocalSelection();
       paintSelection();
-      return;
     }
   }, true);
 
-  const renderBeforeClientSelection = render;
-  render = function renderWithClientSelection() {
-    renderBeforeClientSelection();
+  const renderBeforeOnlineSelection = render;
+  render = function renderWithOnlineSelection() {
+    renderBeforeOnlineSelection();
     if (awaitingHost) awaitingHost = false;
     paintSelection();
   };
