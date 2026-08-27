@@ -1,9 +1,10 @@
-// Safe multiplayer client card-selection layer.
-// Selection is private UI state: keep it local on a client until PLAY is pressed.
-// Repaint once after normal game renders; do not observe/mutate the DOM recursively.
+// Multiplayer client card selection.
+// Selection stays private on the client; PLAY sends an intent to the HOST, which
+// executes the real game engine and broadcasts the authoritative result.
 (() => {
   let localSelected = [];
   let localRank = null;
+  let awaitingHost = false;
 
   function isOnlineClientTurn() {
     const mp = window.ShitHeadMultiplayer;
@@ -25,6 +26,7 @@
 
   function paintSelection() {
     if (!isOnlineClientTurn()) {
+      awaitingHost = false;
       clearLocalSelection();
       return;
     }
@@ -47,20 +49,26 @@
     const hint = actions?.querySelector('.selection-hint');
     if (!actions || !play) return;
 
-    actions.classList.toggle('visible', localSelected.length > 0);
-    play.disabled = localSelected.length === 0;
-    const playText = localSelected.length > 1 ? `PLAY ${localSelected.length}` : 'PLAY';
+    actions.classList.toggle('visible', localSelected.length > 0 || awaitingHost);
+    play.disabled = awaitingHost || localSelected.length === 0;
+    const playText = awaitingHost
+      ? 'PLAYING…'
+      : localSelected.length > 1
+        ? `PLAY ${localSelected.length}`
+        : 'PLAY';
     if (play.textContent !== playText) play.textContent = playText;
     if (hint) {
-      const hintText = localSelected.length > 1 ? `${localSelected.length} matching cards` : 'Selected';
+      const hintText = awaitingHost
+        ? 'Waiting for host'
+        : localSelected.length > 1
+          ? `${localSelected.length} matching cards`
+          : 'Selected';
       if (hint.textContent !== hintText) hint.textContent = hintText;
     }
   }
 
-  // Capture client interactions before the normal handlers. A card selection has
-  // no shared-game meaning until PLAY is pressed, so selecting does not render or publish.
   playerSeat.addEventListener('click', (event) => {
-    if (!isOnlineClientTurn()) return;
+    if (!isOnlineClientTurn() || awaitingHost) return;
 
     const card = event.target.closest('.hand button.card');
     if (card) {
@@ -90,25 +98,29 @@
 
     const play = event.target.closest('.play-selected');
     if (play && localSelected.length) {
-      // Own the client PLAY click completely. Relying on the old button listener
-      // to run after this capture handler proved unreliable in multiplayer.
       event.preventDefault();
       event.stopImmediatePropagation();
-      state.selected = [...localSelected];
-      localSelected = [];
-      localRank = null;
-      playSelected(state.viewer);
+
+      const indices = [...localSelected];
+      const sent = window.ShitHeadAuthoritativePlay?.send?.(state.viewer, indices);
+      if (!sent) {
+        statusText.textContent = 'Could not send the play to the host. Check the room connection.';
+        return;
+      }
+
+      awaitingHost = true;
+      clearLocalSelection();
+      paintSelection();
       return;
     }
-
-    if (event.target.closest('.pickup-pile, .finish-turn')) clearLocalSelection();
   }, true);
 
-  // Shared-state updates rebuild the hand. Hook the game renderer once and repaint
-  // afterwards. Unlike MutationObserver, this cannot trigger itself via DOM writes.
+  // A render after PLAY is the host's authoritative response (successful move or
+  // rejection). Release the temporary waiting state and paint whatever the host sent.
   const renderBeforeClientSelection = render;
   render = function renderWithClientSelection() {
     renderBeforeClientSelection();
+    if (awaitingHost) awaitingHost = false;
     paintSelection();
   };
 
