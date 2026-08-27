@@ -4,9 +4,11 @@
 function enforceOpeningStarter() {
   if (state.phase !== "play") return null;
 
+  // Opening-only house rule: 4 is the lowest starter. A, 2 and 3 are treated as
+  // high/special cards and do not qualify for the lowest-card opening check.
   const order = typeof STARTING_RANK_ORDER !== "undefined"
     ? STARTING_RANK_ORDER
-    : ["4", "5", "6", "7", "8", "9", "J", "Q", "K", "A", "2", "3", "10"];
+    : ["4", "5", "6", "7", "8", "9", "J", "Q", "K", "10"];
 
   for (const rank of order) {
     const holders = PLAYER_NAMES.filter((name) =>
