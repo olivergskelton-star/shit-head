@@ -1,8 +1,6 @@
 // Authoritative multiplayer play transport.
-// Loaded after PeerJS but BEFORE multiplayer.js so we can capture the PeerJS
-// data connections without exposing the multiplayer module's private state.
-// Client browsers send only an intent (player + card indices). The host executes
-// the existing game engine and broadcasts the resulting authoritative state.
+// Clients send only play intent. The host executes the real game engine and
+// broadcasts the resulting authoritative state.
 (() => {
   if (typeof Peer === 'undefined') return;
 
@@ -10,11 +8,20 @@
   const originalConnect = Peer.prototype.connect;
   const originalOn = Peer.prototype.on;
 
-  function normaliseIndices(indices, handLength) {
+  function normaliseIndices(indices, sourceLength) {
     if (!Array.isArray(indices)) return [];
     return [...new Set(indices)]
-      .filter((index) => Number.isInteger(index) && index >= 0 && index < handLength)
+      .filter((index) => Number.isInteger(index) && index >= 0 && index < sourceLength)
       .sort((a, b) => a - b);
+  }
+
+  function currentZone(player) {
+    return window.ShitHeadTablePlay?.currentZone?.(player) || 'hand';
+  }
+
+  function sourceLength(player, zone) {
+    if (window.ShitHeadTablePlay?.sourceLength) return window.ShitHeadTablePlay.sourceLength(player, zone);
+    return zone === 'hand' ? (state.players?.[player]?.hand?.length || 0) : 0;
   }
 
   function attachHostActionListener(conn) {
@@ -22,20 +29,37 @@
     conn.__shitHeadAuthoritativePlayHook = true;
 
     conn.on('data', (data) => {
-      if (!data || data.type !== 'authoritative-play') return;
-      if (typeof state === 'undefined' || typeof playSelected !== 'function') return;
+      if (!data || typeof data !== 'object') return;
+      if (typeof state === 'undefined') return;
 
       const player = data.player;
       if (!PLAYER_NAMES.includes(player)) return;
       if (state.phase !== 'play' || state.currentPlayer !== player) return;
 
-      const hand = state.players?.[player]?.hand || [];
-      const indices = normaliseIndices(data.indices, hand.length);
-      if (!indices.length) return;
+      if (data.type === 'authoritative-play') {
+        if (typeof playSelected !== 'function') return;
+        const zone = data.zone === 'faceUp' ? 'faceUp' : 'hand';
+        if (currentZone(player) !== zone) return;
 
-      state.selected = indices;
-      playSelected(player);
-      window.ShitHeadMultiplayer?.publishState?.();
+        const indices = normaliseIndices(data.indices, sourceLength(player, zone));
+        if (!indices.length) return;
+
+        state.selected = indices;
+        state.selectedZone = zone;
+        playSelected(player);
+        window.ShitHeadMultiplayer?.publishState?.();
+        return;
+      }
+
+      if (data.type === 'authoritative-face-down') {
+        if (currentZone(player) !== 'faceDown') return;
+        const index = Number(data.index);
+        if (!Number.isInteger(index) || index < 0 || index >= sourceLength(player, 'faceDown')) return;
+        if (!window.ShitHeadTablePlay?.playFaceDown) return;
+
+        window.ShitHeadTablePlay.playFaceDown(player, index);
+        window.ShitHeadMultiplayer?.publishState?.();
+      }
     });
   }
 
@@ -57,9 +81,14 @@
   };
 
   window.ShitHeadAuthoritativePlay = {
-    send(player, indices) {
+    send(player, indices, zone = 'hand') {
       if (!clientConnection || !clientConnection.open) return false;
-      clientConnection.send({ type: 'authoritative-play', player, indices: [...indices] });
+      clientConnection.send({ type: 'authoritative-play', player, zone, indices: [...indices] });
+      return true;
+    },
+    sendBlind(player, index) {
+      if (!clientConnection || !clientConnection.open) return false;
+      clientConnection.send({ type: 'authoritative-face-down', player, index });
       return true;
     },
   };
