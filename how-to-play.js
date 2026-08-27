@@ -53,7 +53,7 @@ howToPlayDialog?.addEventListener("close", () => {
         lobbyUx.src = "multiplayer-lobby-ux.js?v=20260827-4";
         lobbyUx.onload = () => {
           const playSelectionFix = document.createElement("script");
-          playSelectionFix.src = "multiplayer-play-selection-fix-v2.js?v=20260827-2";
+          playSelectionFix.src = "multiplayer-play-selection-fix-v2.js?v=20260827-3";
           document.body.append(playSelectionFix);
         };
         document.body.append(lobbyUx);
