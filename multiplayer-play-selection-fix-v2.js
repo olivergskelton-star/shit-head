@@ -1,3 +1,12 @@
+// Load the core table-card end game using the same visible build number.
+(() => {
+  if (window.ShitHeadTablePlay) return;
+  const script = document.createElement('script');
+  const build = encodeURIComponent(window.SHITHEAD_BUILD || 'dev');
+  script.src = `table-card-play.js?v=${build}`;
+  document.body.append(script);
+})();
+
 // Multiplayer online card selection across hand, face-up table cards and blind cards.
 // Host executes locally; clients send intent to the host.
 (() => {
