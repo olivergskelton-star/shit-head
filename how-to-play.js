@@ -37,23 +37,23 @@ howToPlayDialog?.addEventListener("close", () => {
 (function loadMultiplayer() {
   const css = document.createElement("link");
   css.rel = "stylesheet";
-  css.href = "multiplayer.css?v=20260827-7";
+  css.href = "multiplayer.css?v=20260827-8";
   document.head.append(css);
 
   const peerScript = document.createElement("script");
   peerScript.src = "https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js";
   peerScript.onload = () => {
     const multiplayerScript = document.createElement("script");
-    multiplayerScript.src = "multiplayer.js?v=20260827-7";
+    multiplayerScript.src = "multiplayer.js?v=20260827-8";
     multiplayerScript.onload = () => {
       const handshakeFix = document.createElement("script");
-      handshakeFix.src = "multiplayer-handshake-fix.js?v=20260827-3";
+      handshakeFix.src = "multiplayer-handshake-fix.js?v=20260827-4";
       handshakeFix.onload = () => {
         const lobbyUx = document.createElement("script");
-        lobbyUx.src = "multiplayer-lobby-ux.js?v=20260827-2";
+        lobbyUx.src = "multiplayer-lobby-ux.js?v=20260827-3";
         lobbyUx.onload = () => {
           const playSelectionFix = document.createElement("script");
-          playSelectionFix.src = "multiplayer-play-selection-fix.js?v=20260827-1";
+          playSelectionFix.src = "multiplayer-play-selection-fix-v2.js?v=20260827-1";
           document.body.append(playSelectionFix);
         };
         document.body.append(lobbyUx);
