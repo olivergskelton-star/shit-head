@@ -1,33 +1,25 @@
 // Keeps the room UI honest during PeerJS join attempts.
-// The core multiplayer layer enters client mode before the host has acknowledged
-// the requested seat, so a failed connection can otherwise look "connected".
+// Uses a small timer rather than watching and rewriting the same DOM tree.
 (() => {
-  function getEls() {
-    return {
-      error: document.querySelector('#mpError'),
-      status: document.querySelector('#mpRoomStatus'),
-      players: document.querySelector('#mpPlayers'),
-      roomCard: document.querySelector('#mpRoomCard'),
-    };
-  }
-
   function reconcile() {
-    const { error, status, players, roomCard } = getEls();
-    if (!error || !status || !players || !roomCard) return;
+    const error = document.querySelector('#mpError');
+    const status = document.querySelector('#mpRoomStatus');
+    const players = document.querySelector('#mpPlayers');
+    if (!error || !status || !players) return;
 
     const failed = /could not join that room|connection to the host was lost/i.test(error.textContent || '');
     if (!failed) return;
 
-    // A PeerJS failure means the host never acknowledged this seat. Do not leave
-    // the optimistic pre-welcome UI claiming that the browser is connected.
-    status.textContent = 'Not connected — check the room code and make sure the host browser is still open.';
+    const message = 'Not connected — check the room code and make sure the host browser is still open.';
+    if (status.textContent !== message) status.textContent = message;
     players.querySelectorAll('.room-player').forEach((pill) => {
-      pill.classList.remove('connected');
-      pill.textContent = pill.textContent.replace(/\s*✓\s*$/, '');
+      if (pill.classList.contains('connected')) pill.classList.remove('connected');
+      const clean = pill.textContent.replace(/\s*✓\s*$/, '');
+      if (pill.textContent !== clean) pill.textContent = clean;
     });
   }
 
-  const observer = new MutationObserver(reconcile);
-  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   reconcile();
+  const timer = window.setInterval(reconcile, 300);
+  window.addEventListener('pagehide', () => window.clearInterval(timer), { once: true });
 })();
