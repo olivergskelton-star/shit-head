@@ -1,5 +1,18 @@
 // Makes an active multiplayer room behave like a lobby instead of a second join form.
+// Deliberately avoids MutationObserver: this UI writes to the same DOM it reads,
+// so observing those writes can create a self-triggering render loop.
 (() => {
+  function setText(el, text) {
+    if (el && el.textContent !== text) el.textContent = text;
+  }
+
+  function setHidden(el, hidden) {
+    if (!el) return;
+    const has = el.classList.contains('multiplayer-hidden');
+    if (hidden && !has) el.classList.add('multiplayer-hidden');
+    else if (!hidden && has) el.classList.remove('multiplayer-hidden');
+  }
+
   function reconcileLobbyUi() {
     const mp = window.ShitHeadMultiplayer;
     const dialog = document.querySelector('.multiplayer-dialog');
@@ -12,7 +25,7 @@
     if (!grid || !roomCard || !error) return;
 
     const online = status.role !== 'local' && !!status.roomCode;
-    grid.classList.toggle('multiplayer-hidden', online);
+    setHidden(grid, online);
 
     let actions = roomCard.querySelector('.room-lobby-actions');
     if (!actions) {
@@ -31,13 +44,12 @@
     }
 
     if (!online) {
-      actions.classList.add('multiplayer-hidden');
+      setHidden(actions, true);
       return;
     }
 
-    // Once the host has acknowledged the room, old join-form validation is irrelevant.
-    error.textContent = '';
-    actions.classList.remove('multiplayer-hidden');
+    if (error.textContent) error.textContent = '';
+    setHidden(actions, false);
 
     const primary = actions.querySelector('.room-lobby-primary');
     const players = Array.isArray(status.players) ? status.players : [];
@@ -45,27 +57,27 @@
     const inLobby = typeof state !== 'undefined' && state.phase === 'lobby';
 
     if (!inLobby) {
-      primary.classList.add('multiplayer-hidden');
+      setHidden(primary, true);
       return;
     }
 
-    primary.classList.remove('multiplayer-hidden');
+    setHidden(primary, false);
     if (status.role === 'host') {
-      primary.disabled = !allThree;
-      primary.textContent = allThree ? 'START GAME' : `WAITING ${players.length}/3`;
+      if (primary.disabled === allThree) primary.disabled = !allThree;
+      setText(primary, allThree ? 'START GAME' : `WAITING ${players.length}/3`);
       primary.onclick = () => {
         if (!allThree) return;
         mp.startGame();
         dialog.close();
       };
     } else {
-      primary.disabled = true;
-      primary.textContent = 'WAITING FOR HOST';
+      if (!primary.disabled) primary.disabled = true;
+      setText(primary, 'WAITING FOR HOST');
       primary.onclick = null;
     }
   }
 
-  const observer = new MutationObserver(reconcileLobbyUi);
-  observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true });
   reconcileLobbyUi();
+  const timer = window.setInterval(reconcileLobbyUi, 250);
+  window.addEventListener('pagehide', () => window.clearInterval(timer), { once: true });
 })();
