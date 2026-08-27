@@ -31,3 +31,22 @@ howToPlayDialog?.addEventListener("close", () => {
   document.body.classList.remove("how-to-play-open");
   howToPlayButton?.focus();
 });
+
+// Multiplayer is loaded last so it can wrap the finished game renderer without
+// changing the existing table/layout scripts.
+(function loadMultiplayer() {
+  const css = document.createElement("link");
+  css.rel = "stylesheet";
+  css.href = "multiplayer.css?v=20260827-1";
+  document.head.append(css);
+
+  const peerScript = document.createElement("script");
+  peerScript.src = "https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js";
+  peerScript.onload = () => {
+    const multiplayerScript = document.createElement("script");
+    multiplayerScript.src = "multiplayer.js?v=20260827-1";
+    document.body.append(multiplayerScript);
+  };
+  peerScript.onerror = () => console.warn("Shit Head multiplayer library could not be loaded.");
+  document.body.append(peerScript);
+})();
