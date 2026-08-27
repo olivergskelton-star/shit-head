@@ -1,6 +1,5 @@
 // Setup phase: each player may swap hand cards with their 3 face-up table cards before play.
-// Loaded after engine-v2.js. In the current single-browser test harness, use View As
-// to configure each player and mark them READY.
+// Loaded after engine-v2.js. In local mode, use View As to configure each player and mark them READY.
 
 const STARTING_RANK_ORDER = ["4", "5", "6", "7", "8", "9", "J", "Q", "K", "A", "2", "3", "10"];
 
@@ -8,7 +7,8 @@ state.phase = "setup";
 state.setupReady = Object.fromEntries(PLAYER_NAMES.map((name) => [name, false]));
 state.setupReadyOrder = [];
 state.setupSelection = null;
-state.startingPlayer = state.currentPlayer;
+state.startingPlayer = null;
+state.currentPlayer = null;
 
 function ensureOpeningHandsOfFour() {
   PLAYER_NAMES.forEach((name) => {
@@ -25,6 +25,9 @@ function resetSetupPhase() {
   state.setupReadyOrder = [];
   state.setupSelection = null;
   state.startingPlayer = null;
+  // Nobody is the active player while cards are still being arranged. The starter
+  // is chosen from the FINAL hands only after everybody has pressed READY.
+  state.currentPlayer = null;
   state.followUpRank = null;
   state.selected = [];
 }
@@ -164,7 +167,7 @@ function renderSetupStatus() {
   if (state.lastMessage) {
     statusText.textContent = state.lastMessage;
   } else if (state.setupReady[state.viewer]) {
-    statusText.textContent = `Setup — ready order: ${readyNames.join(" → ")}. Switch View As to prepare another player.`;
+    statusText.textContent = `Setup — ready order: ${readyNames.join(" → ")}. Waiting for the other players.`;
   } else {
     statusText.textContent = `Setup — ${state.players[state.viewer].hand.length} cards in hand. Arrange your face-up table cards, then press READY.`;
   }
@@ -197,8 +200,10 @@ render = function renderSetupPhase() {
     renderSetupActions();
     renderSetupStatus();
     document.body.dataset.gamePhase = "setup";
-  } else {
+  } else if (state.phase === "play") {
     document.body.dataset.gamePhase = "play";
+  } else {
+    document.body.dataset.gamePhase = state.phase || "lobby";
   }
 };
 
