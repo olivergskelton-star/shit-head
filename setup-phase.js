@@ -1,7 +1,9 @@
 // Setup phase: each player may swap hand cards with their 3 face-up table cards before play.
 // Loaded after engine-v2.js. In local mode, use View As to configure each player and mark them READY.
 
-const STARTING_RANK_ORDER = ["4", "5", "6", "7", "8", "9", "J", "Q", "K", "A", "2", "3", "10"];
+// Opening-only order. A, 2 and 3 are high/special and do not qualify as the
+// lowest opening card. 4 is therefore the lowest possible opener.
+const STARTING_RANK_ORDER = ["4", "5", "6", "7", "8", "9", "J", "Q", "K", "10"];
 
 state.phase = "setup";
 state.setupReady = Object.fromEntries(PLAYER_NAMES.map((name) => [name, false]));
