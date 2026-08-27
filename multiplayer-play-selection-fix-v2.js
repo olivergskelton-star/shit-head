@@ -57,8 +57,8 @@
     }
   }
 
-  // Capture client hand clicks before the normal handler. Do not call render here:
-  // a selection has no shared-game meaning until PLAY is pressed.
+  // Capture client interactions before the normal handlers. A card selection has
+  // no shared-game meaning until PLAY is pressed, so selecting does not render or publish.
   playerSeat.addEventListener('click', (event) => {
     if (!isOnlineClientTurn()) return;
 
@@ -90,10 +90,14 @@
 
     const play = event.target.closest('.play-selected');
     if (play && localSelected.length) {
-      // Existing PLAY listener runs after capture and reads state.selected.
+      // Own the client PLAY click completely. Relying on the old button listener
+      // to run after this capture handler proved unreliable in multiplayer.
+      event.preventDefault();
+      event.stopImmediatePropagation();
       state.selected = [...localSelected];
       localSelected = [];
       localRank = null;
+      playSelected(state.viewer);
       return;
     }
 
