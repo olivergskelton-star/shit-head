@@ -37,14 +37,14 @@ howToPlayDialog?.addEventListener("close", () => {
 (function loadMultiplayer() {
   const css = document.createElement("link");
   css.rel = "stylesheet";
-  css.href = "multiplayer.css?v=20260827-3";
+  css.href = "multiplayer.css?v=20260827-4";
   document.head.append(css);
 
   const peerScript = document.createElement("script");
   peerScript.src = "https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js";
   peerScript.onload = () => {
     const multiplayerScript = document.createElement("script");
-    multiplayerScript.src = "multiplayer.js?v=20260827-3";
+    multiplayerScript.src = "multiplayer.js?v=20260827-4";
     document.body.append(multiplayerScript);
   };
   peerScript.onerror = () => console.warn("Shit Head multiplayer library could not be loaded.");
