@@ -33,30 +33,33 @@ howToPlayDialog?.addEventListener("close", () => {
 });
 
 // Multiplayer is loaded last so it can wrap the finished game renderer without
-// changing the existing table/layout scripts.
+// changing the existing table/layout scripts. Every local multiplayer asset uses
+// the SAME visible build number, so the badge tells us which cache generation is loaded.
 (function loadMultiplayer() {
+  const build = encodeURIComponent(window.SHITHEAD_BUILD || "dev");
+
   const css = document.createElement("link");
   css.rel = "stylesheet";
-  css.href = "multiplayer.css?v=20260827-10";
+  css.href = `multiplayer.css?v=${build}`;
   document.head.append(css);
 
   const peerScript = document.createElement("script");
   peerScript.src = "https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js";
   peerScript.onload = () => {
     const authoritativePlay = document.createElement("script");
-    authoritativePlay.src = "multiplayer-authoritative-play.js?v=20260827-1";
+    authoritativePlay.src = `multiplayer-authoritative-play.js?v=${build}`;
     authoritativePlay.onload = () => {
       const multiplayerScript = document.createElement("script");
-      multiplayerScript.src = "multiplayer.js?v=20260827-10";
+      multiplayerScript.src = `multiplayer.js?v=${build}`;
       multiplayerScript.onload = () => {
         const handshakeFix = document.createElement("script");
-        handshakeFix.src = "multiplayer-handshake-fix.js?v=20260827-6";
+        handshakeFix.src = `multiplayer-handshake-fix.js?v=${build}`;
         handshakeFix.onload = () => {
           const lobbyUx = document.createElement("script");
-          lobbyUx.src = "multiplayer-lobby-ux.js?v=20260827-5";
+          lobbyUx.src = `multiplayer-lobby-ux.js?v=${build}`;
           lobbyUx.onload = () => {
             const playSelectionFix = document.createElement("script");
-            playSelectionFix.src = "multiplayer-play-selection-fix-v2.js?v=20260827-4";
+            playSelectionFix.src = `multiplayer-play-selection-fix-v2.js?v=${build}`;
             document.body.append(playSelectionFix);
           };
           document.body.append(lobbyUx);
