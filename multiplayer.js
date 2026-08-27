@@ -7,6 +7,7 @@
     hostConnection: null,
     connections: new Map(),
     claimedPlayers: new Set(),
+    presentPlayers: new Set(),
     suppressPublish: false,
     publishTimer: null,
   };
@@ -31,6 +32,7 @@
     }
     render();
     MP.suppressPublish = false;
+    updateRoomUi();
   }
 
   function send(conn, payload) {
@@ -75,6 +77,12 @@
   trigger.textContent = "Play online";
   document.querySelector(".controls")?.prepend(trigger);
 
+  const startButton = document.createElement("button");
+  startButton.type = "button";
+  startButton.className = "multiplayer-start multiplayer-hidden";
+  startButton.textContent = "START GAME";
+  trigger.insertAdjacentElement("afterend", startButton);
+
   const dialog = document.createElement("dialog");
   dialog.className = "multiplayer-dialog";
   dialog.innerHTML = `
@@ -113,24 +121,109 @@
   const playersEl = dialog.querySelector("#mpPlayers");
 
   function showError(message = "") { errorText.textContent = message; }
+
+  function onlinePlayers() {
+    if (MP.role === "host") return new Set(MP.claimedPlayers);
+    if (MP.role === "client") return new Set(MP.presentPlayers.size ? MP.presentPlayers : [MP.player]);
+    return new Set();
+  }
+
+  function updateStartUi() {
+    const inLobby = MP.role !== "local" && state.phase === "lobby";
+    const connected = onlinePlayers();
+    const allThree = PLAYER_NAMES.every((name) => connected.has(name));
+
+    startButton.classList.toggle("multiplayer-hidden", !inLobby);
+    if (!inLobby) {
+      if (MP.role === "host") newGameBtn.disabled = false;
+      else if (MP.role === "client") newGameBtn.disabled = true;
+      return;
+    }
+
+    newGameBtn.disabled = true;
+    if (MP.role === "host") {
+      startButton.disabled = !allThree;
+      startButton.textContent = allThree ? "START GAME" : `WAITING ${connected.size}/3`;
+    } else {
+      startButton.disabled = true;
+      startButton.textContent = "WAITING FOR HOST";
+    }
+  }
+
   function updateRoomUi() {
     const online = MP.role !== "local";
     trigger.classList.toggle("online", online);
     trigger.textContent = online ? `Room ${MP.roomCode}` : "Play online";
     roomCard.classList.toggle("multiplayer-hidden", !online);
     roomDisplay.textContent = MP.roomCode;
-    const connected = new Set([MP.player]);
-    MP.connections.forEach((meta) => { if (meta.player) connected.add(meta.player); });
-    if (MP.role === "client" && MP.player) connected.add(MP.player);
+
+    const connected = onlinePlayers();
     playersEl.replaceChildren(...PLAYER_NAMES.map((name) => {
       const pill = document.createElement("span");
       pill.className = `room-player${connected.has(name) ? " connected" : ""}`;
       pill.textContent = connected.has(name) ? `${name} ✓` : name;
       return pill;
     }));
-    roomStatus.textContent = MP.role === "host"
-      ? `${MP.player} is hosting. Keep this browser open while you play.`
-      : MP.role === "client" ? `Connected as ${MP.player}.` : "";
+
+    if (MP.role === "host") {
+      roomStatus.textContent = state.phase === "lobby"
+        ? connected.size === 3
+          ? "Everyone is in. Close this window and press START GAME."
+          : `Waiting for players — ${connected.size}/3 connected.`
+        : `${MP.player} is hosting. Keep this browser open while you play.`;
+    } else if (MP.role === "client") {
+      roomStatus.textContent = state.phase === "lobby"
+        ? `Connected as ${MP.player}. Waiting for the host to start.`
+        : `Connected as ${MP.player}.`;
+    } else roomStatus.textContent = "";
+
+    updateStartUi();
+  }
+
+  function blankPlayers() {
+    return Object.fromEntries(PLAYER_NAMES.map((name) => [name, { faceDown: [], faceUp: [], hand: [] }]));
+  }
+
+  function enterOnlineLobby() {
+    MP.suppressPublish = true;
+    state.phase = "lobby";
+    state.players = blankPlayers();
+    state.drawPile = [];
+    state.discard = [];
+    state.burnPile = [];
+    state.followUpRank = null;
+    state.setupReady = Object.fromEntries(PLAYER_NAMES.map((name) => [name, false]));
+    state.setupReadyOrder = [];
+    state.setupSelection = null;
+    state.startingPlayer = null;
+    state.currentPlayer = null;
+    state.selected = [];
+    state.lastMessage = "Online table ready — waiting for all three players.";
+    if (typeof tickerReset === "function") tickerReset();
+    MP.suppressPublish = false;
+    render();
+  }
+
+  function startOnlineGame() {
+    if (MP.role !== "host" || state.phase !== "lobby") return;
+    const connected = onlinePlayers();
+    if (!PLAYER_NAMES.every((name) => connected.has(name))) {
+      state.lastMessage = "All three players need to be connected before the deal starts.";
+      render();
+      return;
+    }
+
+    MP.suppressPublish = true;
+    dealNewGame();
+    if (typeof resetSetupPhase === "function") resetSetupPhase();
+    state.phase = "setup";
+    state.currentPlayer = null;
+    state.startingPlayer = null;
+    state.lastMessage = "Cards dealt — arrange your face-up table cards, then press READY.";
+    if (typeof tickerReset === "function") tickerReset();
+    MP.suppressPublish = false;
+    render();
+    publishState();
   }
 
   function resetOnlineState() {
@@ -141,11 +234,20 @@
     MP.hostConnection = null;
     MP.connections.clear();
     MP.claimedPlayers.clear();
+    MP.presentPlayers.clear();
     MP.role = "local";
     MP.roomCode = "";
     MP.player = "";
     viewerSelect.disabled = false;
     newGameBtn.disabled = false;
+    startButton.classList.add("multiplayer-hidden");
+    updateRoomUi();
+  }
+
+  function publishPresence() {
+    const players = [...MP.claimedPlayers];
+    MP.presentPlayers = new Set(players);
+    broadcast({ type: "presence", players });
     updateRoomUi();
   }
 
@@ -161,9 +263,9 @@
         }
         MP.connections.get(conn).player = requested;
         MP.claimedPlayers.add(requested);
-        send(conn, { type: "welcome", roomCode: MP.roomCode, player: requested, state: snapshotState() });
-        broadcast({ type: "presence", players: [...MP.claimedPlayers] });
-        updateRoomUi();
+        MP.presentPlayers = new Set(MP.claimedPlayers);
+        send(conn, { type: "welcome", roomCode: MP.roomCode, player: requested, players: [...MP.claimedPlayers], state: snapshotState() });
+        publishPresence();
         return;
       }
       if (data.type === "state-proposal") {
@@ -177,8 +279,7 @@
       const meta = MP.connections.get(conn);
       if (meta?.player) MP.claimedPlayers.delete(meta.player);
       MP.connections.delete(conn);
-      broadcast({ type: "presence", players: [...MP.claimedPlayers] });
-      updateRoomUi();
+      publishPresence();
     });
   }
 
@@ -192,8 +293,9 @@
     MP.roomCode = code;
     MP.player = player;
     MP.claimedPlayers.add(player);
+    MP.presentPlayers = new Set([player]);
     setViewer(player);
-    newGameBtn.disabled = false;
+    enterOnlineLobby();
     updateRoomUi();
     MP.peer = new Peer(peerIdForRoom(code));
     MP.peer.on("open", () => {
@@ -215,6 +317,7 @@
     MP.role = "client";
     MP.roomCode = code;
     MP.player = playerSelect.value;
+    MP.presentPlayers = new Set([MP.player]);
     setViewer(MP.player);
     newGameBtn.disabled = true;
     updateRoomUi();
@@ -227,12 +330,14 @@
         if (!data || typeof data !== "object") return;
         if (data.type === "welcome") {
           setViewer(data.player);
+          MP.presentPlayers = new Set(data.players || [data.player]);
           applySnapshot(data.state);
           updateRoomUi();
           dialog.close();
         } else if (data.type === "state") {
           applySnapshot(data.state);
         } else if (data.type === "presence") {
+          MP.presentPlayers = new Set(data.players || []);
           updateRoomUi();
         } else if (data.type === "rejected") {
           showError(data.message || "Could not join that seat.");
@@ -249,6 +354,7 @@
   }
 
   trigger.addEventListener("click", () => { showError(); updateRoomUi(); dialog.showModal(); });
+  startButton.addEventListener("click", startOnlineGame);
   dialog.querySelector("#mpCreate").addEventListener("click", createRoom);
   dialog.querySelector("#mpJoin").addEventListener("click", joinRoom);
   dialog.querySelector("#mpClose").addEventListener("click", () => dialog.close());
@@ -257,12 +363,19 @@
   const renderBeforeMultiplayer = render;
   render = function renderWithMultiplayer() {
     renderBeforeMultiplayer();
+    if (MP.role !== "local" && state.phase === "lobby") {
+      statusText.textContent = MP.role === "host"
+        ? "Online lobby — wait for all three players, then press START GAME."
+        : "Online lobby — waiting for the host to start the deal.";
+    }
+    updateStartUi();
     schedulePublish();
   };
 
   window.ShitHeadMultiplayer = {
     publishState,
     disconnect: resetOnlineState,
-    get status() { return { role: MP.role, roomCode: MP.roomCode, player: MP.player }; },
+    startGame: startOnlineGame,
+    get status() { return { role: MP.role, roomCode: MP.roomCode, player: MP.player, players: [...onlinePlayers()] }; },
   };
 })();
