@@ -1,6 +1,6 @@
-// Authoritative multiplayer play transport.
-// Clients send only play intent. The host executes the real game engine and
-// broadcasts the resulting authoritative state.
+// 0.9.15 authoritative multiplayer card actions.
+// Clients send only intent. The host validates/executes against the canonical
+// table-slot engine and then broadcasts the resulting state.
 (() => {
   if (typeof Peer === 'undefined') return;
 
@@ -8,20 +8,19 @@
   const originalConnect = Peer.prototype.connect;
   const originalOn = Peer.prototype.on;
 
-  function normaliseIndices(indices, sourceLength) {
-    if (!Array.isArray(indices)) return [];
-    return [...new Set(indices)]
-      .filter((index) => Number.isInteger(index) && index >= 0 && index < sourceLength)
-      .sort((a, b) => a - b);
+  function legacyRefs(data) {
+    if (!Array.isArray(data?.indices)) return [];
+    const zone = data.zone === 'faceUp' ? 'faceUp' : 'hand';
+    return data.indices
+      .filter((index) => Number.isInteger(index))
+      .map((index) => ({ zone, index }));
   }
 
-  function currentZone(player) {
-    return window.ShitHeadTablePlay?.currentZone?.(player) || 'hand';
-  }
-
-  function sourceLength(player, zone) {
-    if (window.ShitHeadTablePlay?.sourceLength) return window.ShitHeadTablePlay.sourceLength(player, zone);
-    return zone === 'hand' ? (state.players?.[player]?.hand?.length || 0) : 0;
+  function cleanRefs(refs) {
+    if (!Array.isArray(refs)) return [];
+    return refs
+      .filter((ref) => ref && (ref.zone === 'hand' || ref.zone === 'faceUp') && Number.isInteger(ref.index))
+      .map((ref) => ({ zone: ref.zone, index: ref.index }));
   }
 
   function attachHostActionListener(conn) {
@@ -29,35 +28,24 @@
     conn.__shitHeadAuthoritativePlayHook = true;
 
     conn.on('data', (data) => {
-      if (!data || typeof data !== 'object') return;
-      if (typeof state === 'undefined') return;
+      if (!data || typeof data !== 'object' || typeof state === 'undefined') return;
 
       const player = data.player;
       if (!PLAYER_NAMES.includes(player)) return;
       if (state.phase !== 'play' || state.currentPlayer !== player) return;
 
       if (data.type === 'authoritative-play') {
-        if (typeof playSelected !== 'function') return;
-        const zone = data.zone === 'faceUp' ? 'faceUp' : 'hand';
-        if (currentZone(player) !== zone) return;
-
-        const indices = normaliseIndices(data.indices, sourceLength(player, zone));
-        if (!indices.length) return;
-
-        state.selected = indices;
-        state.selectedZone = zone;
-        playSelected(player);
+        const refs = cleanRefs(data.refs).length ? cleanRefs(data.refs) : legacyRefs(data);
+        if (!refs.length || !window.ShitHeadTablePlay?.playRefs) return;
+        window.ShitHeadTablePlay.playRefs(player, refs);
         window.ShitHeadMultiplayer?.publishState?.();
         return;
       }
 
       if (data.type === 'authoritative-face-down') {
-        if (currentZone(player) !== 'faceDown') return;
-        const index = Number(data.index);
-        if (!Number.isInteger(index) || index < 0 || index >= sourceLength(player, 'faceDown')) return;
-        if (!window.ShitHeadTablePlay?.playFaceDown) return;
-
-        window.ShitHeadTablePlay.playFaceDown(player, index);
+        const slotIndex = Number(data.slotIndex ?? data.index);
+        if (!Number.isInteger(slotIndex) || !window.ShitHeadTablePlay?.playFaceDown) return;
+        window.ShitHeadTablePlay.playFaceDown(player, slotIndex);
         window.ShitHeadMultiplayer?.publishState?.();
       }
     });
@@ -81,14 +69,14 @@
   };
 
   window.ShitHeadAuthoritativePlay = {
-    send(player, indices, zone = 'hand') {
+    send(player, refs) {
       if (!clientConnection || !clientConnection.open) return false;
-      clientConnection.send({ type: 'authoritative-play', player, zone, indices: [...indices] });
+      clientConnection.send({ type: 'authoritative-play', player, refs: cleanRefs(refs) });
       return true;
     },
-    sendBlind(player, index) {
+    sendBlind(player, slotIndex) {
       if (!clientConnection || !clientConnection.open) return false;
-      clientConnection.send({ type: 'authoritative-face-down', player, index });
+      clientConnection.send({ type: 'authoritative-face-down', player, slotIndex });
       return true;
     },
   };
