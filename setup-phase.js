@@ -12,6 +12,15 @@ state.setupSelection = null;
 state.startingPlayer = null;
 state.currentPlayer = null;
 
+function setupMultiplayerRole() {
+  return window.ShitHeadMultiplayer?.status?.role || "local";
+}
+
+function publishClientSetupNow() {
+  if (setupMultiplayerRole() !== "client" || state.phase !== "setup") return;
+  window.ShitHeadMultiplayer?.publishState?.();
+}
+
 function ensureOpeningHandsOfFour() {
   PLAYER_NAMES.forEach((name) => {
     const hand = state.players[name]?.hand;
@@ -88,13 +97,28 @@ function selectSetupCard(name, zone, index) {
   state.setupSelection = null;
   state.lastMessage = `${publicName(name)} swapped ${cardText(handCard)} with ${cardText(tableCard)}.`;
   render();
+  // Setup mutations are the one place clients still propose their own seat state.
+  // Send immediately so another browser render cannot overwrite the swap first.
+  publishClientSetupNow();
 }
 
 function markSetupReady(name) {
   if (state.phase !== "setup" || name !== state.viewer || state.setupReady[name]) return;
   state.setupReady[name] = true;
-  state.setupReadyOrder.push(name);
+  if (!state.setupReadyOrder.includes(name)) state.setupReadyOrder.push(name);
   state.setupSelection = null;
+
+  // A client must NEVER promote itself into PLAY. In the previous build the third
+  // client locally saw all three READY flags, switched to play, and therefore no
+  // longer sent its setup proposal. The host and clients then ran different phases.
+  // Keep the client in setup, send READY immediately, and wait for the host's
+  // canonical play snapshot.
+  if (setupMultiplayerRole() === "client") {
+    state.lastMessage = `${publicName(name)} is ready — waiting for the host to confirm the start.`;
+    render();
+    publishClientSetupNow();
+    return;
+  }
 
   if (setupAllReady()) {
     const start = determineStartingPlayer();
