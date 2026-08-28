@@ -21,6 +21,28 @@ function sortHandFor(name) {
   render();
 }
 
+function fitHandToWidth(hand, count) {
+  const firstCard = hand?.querySelector("button.card");
+  if (!hand || !firstCard || count < 2) {
+    hand?.style.removeProperty("--adaptive-hand-margin");
+    hand?.style.removeProperty("--adaptive-hand-rotation");
+    return;
+  }
+
+  const cardWidth = firstCard.getBoundingClientRect().width || 62;
+  const available = Math.max(220, hand.clientWidth - 24);
+  const naturalStep = cardWidth - 8;
+  const fittingStep = (available - cardWidth) / (count - 1);
+  // Never let a resize push the last card out of view. On extremely large pickup
+  // hands the visible slice gets narrow, but every card remains reachable.
+  const step = Math.max(10, Math.min(naturalStep, fittingStep));
+  const overlap = Math.max(0, cardWidth - step);
+
+  hand.style.setProperty("--adaptive-hand-margin", `${-overlap}px`);
+  const rotation = count >= 21 ? 0.45 : count >= 13 ? 0.9 : count >= 8 ? 1.7 : 5.4;
+  hand.style.setProperty("--adaptive-hand-rotation", `${rotation}deg`);
+}
+
 function decorateHandTools() {
   const hand = playerSeat.querySelector(".hand");
   if (!hand) return;
@@ -30,6 +52,7 @@ function decorateHandTools() {
   hand.classList.toggle("hand-many", count >= 8);
   hand.classList.toggle("hand-large", count >= 13);
   hand.classList.toggle("hand-huge", count >= 21);
+  fitHandToWidth(hand, count);
 
   let sortButton = playerSeat.querySelector(".sort-hand");
   if (!sortButton) {
@@ -50,5 +73,15 @@ render = function renderWithHandTools() {
   renderBeforeHandTools();
   decorateHandTools();
 };
+
+let handResizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(handResizeTimer);
+  handResizeTimer = setTimeout(() => {
+    const hand = playerSeat.querySelector(".hand");
+    const count = state.players[state.viewer]?.hand.length || 0;
+    fitHandToWidth(hand, count);
+  }, 60);
+});
 
 render();
