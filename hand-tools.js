@@ -7,6 +7,13 @@ function sortHandFor(name) {
   const player = state.players[name];
   if (!player) return;
 
+  const role = window.ShitHeadMultiplayer?.status?.role || "local";
+  if (role === "client" && state.phase === "play") {
+    const sent = window.ShitHeadAuthoritativePlay?.sendTurnAction?.(name, "sort");
+    if (!sent) statusText.textContent = "Could not send SORT to the host. Check the room connection.";
+    return;
+  }
+
   player.hand.sort((a, b) => {
     const rankDelta = HOUSE_HAND_ORDER.indexOf(a.rank) - HOUSE_HAND_ORDER.indexOf(b.rank);
     if (rankDelta !== 0) return rankDelta;
