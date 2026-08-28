@@ -1,4 +1,4 @@
-// 0.9.15 authoritative multiplayer card actions.
+// 0.9.17 authoritative multiplayer card actions.
 // Clients send only intent. The host validates/executes against the canonical
 // table-slot engine and then broadcasts the resulting state.
 (() => {
@@ -63,13 +63,31 @@
         if (data.action === 'finish' && typeof finishTurn === 'function') {
           finishTurn(player);
           publish();
+          return;
+        }
+        if (data.action === 'sort' && typeof sortHandFor === 'function') {
+          sortHandFor(player);
+          publish();
         }
       }
     });
   }
 
+  function protectClientConnection(conn) {
+    if (!conn || conn.__shitHeadStateProposalGuard) return conn;
+    conn.__shitHeadStateProposalGuard = true;
+    const rawSend = conn.send.bind(conn);
+    conn.send = function guardedSend(payload, ...args) {
+      // Setup legitimately uses concurrent per-player state proposals for swaps/READY.
+      // Once play begins, the host is authoritative and clients must only send actions.
+      if (payload?.type === 'state-proposal' && state.phase !== 'setup') return;
+      return rawSend(payload, ...args);
+    };
+    return conn;
+  }
+
   Peer.prototype.connect = function connectWithAuthoritativePlay(...args) {
-    const conn = originalConnect.apply(this, args);
+    const conn = protectClientConnection(originalConnect.apply(this, args));
     clientConnection = conn;
     return conn;
   };
@@ -97,7 +115,7 @@
       return true;
     },
     sendTurnAction(player, action) {
-      if (!clientConnection || !clientConnection.open || !['pickup', 'finish'].includes(action)) return false;
+      if (!clientConnection || !clientConnection.open || !['pickup', 'finish', 'sort'].includes(action)) return false;
       clientConnection.send({ type: 'authoritative-turn-action', player, action });
       return true;
     },
