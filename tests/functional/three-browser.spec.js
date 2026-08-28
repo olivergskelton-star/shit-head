@@ -116,10 +116,12 @@ test('three real pages stay in sync through SORT, READY, PLAY and PICK UP', asyn
   await joinRoom(chris, 'Chris', roomCode);
   await expect(oliver.locator('#mpPlayers .room-player.connected')).toHaveCount(3);
 
-  step('start game and verify setup is synchronized');
-  await expect(oliver.locator('.multiplayer-start')).toBeVisible();
-  await expect(oliver.locator('.multiplayer-start')).toBeEnabled();
-  await oliver.locator('.multiplayer-start').click();
+  step('start game from the real in-dialog lobby button and verify setup is synchronized');
+  const lobbyStart = oliver.locator('.room-lobby-primary');
+  await expect(lobbyStart).toBeVisible();
+  await expect(lobbyStart).toBeEnabled();
+  await expect(lobbyStart).toHaveText('START GAME');
+  await lobbyStart.click();
   await Promise.all(pages.map((page) => page.waitForFunction(() => state.phase === 'setup')));
   await expectAllSynced(pages);
 
