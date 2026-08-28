@@ -26,6 +26,13 @@ function sortHandFor(name) {
   if (state.setupSelection?.zone === "hand") state.setupSelection = null;
   state.lastMessage = `${publicName(name)} sorted the hand into house order.`;
   render();
+
+  // During setup a client still proposes only its own seat state. Send the sorted
+  // hand immediately rather than letting a concurrent host render cancel the
+  // delayed publish timer and put the old order back.
+  if (role === "client" && state.phase === "setup") {
+    window.ShitHeadMultiplayer?.publishState?.();
+  }
 }
 
 function fitHandToWidth(hand, count) {
