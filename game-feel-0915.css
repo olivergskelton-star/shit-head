@@ -137,6 +137,23 @@
   min-height: 88px;
 }
 
+/* 0.9.16: the actual card count and available width decide the overlap.
+   This deliberately loads after mobile-layout.css so narrow desktop test windows
+   do not fall back to the old fixed -8px mobile overlap. */
+.hand.hand-many button.card {
+  margin-left: var(--adaptive-hand-margin, -12px) !important;
+  transform: rotate(calc((var(--card-index) - var(--card-mid)) * var(--adaptive-hand-rotation, 1.7deg))) !important;
+}
+
+.hand.hand-many button.card:first-child {
+  margin-left: 0 !important;
+}
+
+.hand.hand-many button.card.selected,
+.hand.hand-many button.card:focus-visible {
+  transform: translateY(-22px) rotate(0deg) scale(1.035) !important;
+}
+
 @media (max-width: 700px) {
   .self-hand-count {
     min-width: 64px;
