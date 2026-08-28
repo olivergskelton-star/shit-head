@@ -1,0 +1,36 @@
+name: Three-browser functional smoke
+
+on:
+  push:
+    branches:
+      - test/three-browser-simulator
+  pull_request:
+    paths:
+      - '*.js'
+      - '*.html'
+      - 'tests/functional/**'
+      - 'package.json'
+      - 'playwright.config.js'
+      - '.github/workflows/three-browser-functional.yml'
+
+jobs:
+  three-browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install test dependencies
+        run: npm install
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run three-browser smoke test
+        run: npm run test:functional
