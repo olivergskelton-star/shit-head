@@ -1,0 +1,162 @@
+/* 0.9.15 rules/feel presentation --------------------------------------- */
+
+.self-hand-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 72px;
+  min-height: 32px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.28);
+  background: rgba(0,0,0,.62);
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .07em;
+  box-shadow: 0 4px 10px rgba(0,0,0,.25);
+  white-space: nowrap;
+}
+
+.table-slot.empty-table-slot {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.self-face-row button.table-play-card,
+.self-face-row button.table-blind-card {
+  appearance: none;
+  padding: 0;
+}
+
+.self-face-row button.table-play-card {
+  transition: transform .14s ease, box-shadow .14s ease, filter .14s ease;
+}
+
+.self-face-row button.table-play-card:hover,
+.self-face-row button.table-play-card:focus-visible,
+.self-face-row button.table-play-card.selected {
+  transform: translateY(-8px) !important;
+  outline: none;
+  box-shadow: 0 10px 20px rgba(0,0,0,.36), 0 0 0 3px var(--accent);
+  z-index: 12;
+}
+
+.self-face-row .exposed-blind {
+  transform: none !important;
+  transition: transform .14s ease, box-shadow .14s ease, filter .14s ease;
+}
+
+.self-face-row .exposed-blind:hover,
+.self-face-row .exposed-blind:focus-visible {
+  transform: translateY(-7px) rotate(-1deg) !important;
+  outline: none;
+  box-shadow: 0 10px 20px rgba(0,0,0,.38), 0 0 0 3px var(--accent);
+}
+
+.player-out {
+  opacity: .48;
+  filter: saturate(.55);
+}
+
+/* Live pile: public cards should look physically played, not perfectly stacked. */
+.pile-discard {
+  position: relative;
+  overflow: visible;
+}
+
+.pile-discard.is-empty .card,
+.pile-discard.is-empty .empty-pile {
+  display: none !important;
+}
+
+.pile-mess-card {
+  position: absolute !important;
+  left: 0;
+  top: 0;
+  margin: 0 !important;
+  pointer-events: none;
+  transform: translate(var(--pile-x, 0px), var(--pile-y, 0px)) rotate(var(--pile-r, 0deg));
+  z-index: var(--pile-z, 1);
+}
+
+.pile-run-indicator {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  transform: translateX(-50%);
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.22);
+  background: rgba(0,0,0,.72);
+  color: rgba(255,255,255,.92);
+  font-size: .66rem;
+  font-weight: 900;
+  letter-spacing: .03em;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px rgba(0,0,0,.25);
+}
+
+.pile-run-indicator.next-burn {
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.pile-run-indicator .run-note {
+  color: var(--accent);
+  font-size: .61rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.pile-main-count.is-zero,
+.discard-count.is-zero {
+  opacity: 0;
+}
+
+/* Short, functional card-motion ghosts. */
+.card-flight-ghost {
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  z-index: 10000 !important;
+  width: 62px !important;
+  min-height: 88px;
+  margin: 0 !important;
+  pointer-events: none !important;
+  transform-origin: 50% 50%;
+  box-shadow: 0 10px 24px rgba(0,0,0,.42) !important;
+  will-change: transform, opacity;
+}
+
+.card-flight-ghost.card-back {
+  min-height: 88px;
+}
+
+@media (max-width: 700px) {
+  .self-hand-count {
+    min-width: 64px;
+    min-height: 29px;
+    padding: 4px 8px;
+    font-size: .68rem;
+  }
+
+  .pile-run-indicator {
+    top: calc(100% + 5px);
+    max-width: 118px;
+    padding: 3px 6px;
+    font-size: .6rem;
+  }
+
+  .pile-run-indicator .run-note { font-size: .55rem; }
+  .card-flight-ghost { width: 52px !important; min-height: 74px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .self-face-row button.table-play-card,
+  .self-face-row .exposed-blind { transition: none; }
+}
