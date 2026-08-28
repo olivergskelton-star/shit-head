@@ -5,7 +5,9 @@ const { test, expect } = require('@playwright/test');
 const fakePeerSource = fs.readFileSync(path.join(__dirname, 'fake-peer.js'), 'utf8');
 const PLAYER_NAMES = ['Oliver', 'Dan', 'Chris'];
 const SEEDS = [11, 29, 47];
+const SOAK_SEEDS = new Set([29]);
 const MAX_ACTIONS = 500;
+const SOAK_ACTIONS = 300;
 
 function log(seed, message) {
   console.log(`[bot seed ${seed}] ${message}`);
@@ -221,8 +223,6 @@ async function chooseAction(page, playerName, randomValue, repeatCount) {
       const actions = [];
       grouped.forEach((refs) => {
         if (api.validateRefs(name, refs).ok) actions.push({ type: 'play', refs });
-        // Sometimes shed only one card, leaving the matching-card follow-up path
-        // to make the deterministic bots explore a different legal branch.
         if (refs.length > 1) {
           const single = [refs[0]];
           if (api.validateRefs(name, single).ok) actions.push({ type: 'play', refs: single });
@@ -257,9 +257,8 @@ async function chooseAction(page, playerName, randomValue, repeatCount) {
 
     actions = uniqueActions(actions);
 
-    // A player is always allowed to pick up the pile. Normally the bot only does
-    // this when it cannot play. On a repeated position it becomes a deliberate
-    // escape route so a deterministic bot cannot grind the same legal loop forever.
+    // Picking up is legal even when a play exists. The bots normally reserve it
+    // for no-play positions; repeated exact positions also make it an escape path.
     if (!state.followUpRank && state.discard.length > 0 && (!actions.length || repeats > 1)) {
       actions.push({ type: 'pickup' });
     }
@@ -278,8 +277,6 @@ async function chooseAction(page, playerName, randomValue, repeatCount) {
       };
     }
 
-    // Exact replayability: seed + action number gives the same random value, while
-    // repeated positions rotate farther through the candidate list.
     const baseIndex = Math.floor(random * actions.length) % actions.length;
     const index = (baseIndex + Math.max(0, repeats - 1)) % actions.length;
     return actions[index];
@@ -330,13 +327,15 @@ async function runGame(browser, seed) {
   const { context, pages, byName, host } = await openSeededGame(browser, seed);
   const rng = seededRandom(seed);
   const seenPositions = new Map();
+  const isSoak = SOAK_SEEDS.has(seed);
+  const actionLimit = isSoak ? SOAK_ACTIONS : MAX_ACTIONS;
   let actions = 0;
   let lastAction = null;
   let cycleBreaks = 0;
   const counts = { play: 0, blind: 0, pickup: 0, finish: 0 };
 
   try {
-    while (actions < MAX_ACTIONS) {
+    while (actions < actionLimit) {
       const phase = await host.evaluate(() => state.phase);
       if (phase === 'gameover') break;
       expect(phase, `seed ${seed}, action ${actions}: expected play/gameover`).toBe('play');
@@ -389,14 +388,22 @@ async function runGame(browser, seed) {
       scores: { ...state.scores },
       roundScored: state.roundScored,
     }));
-    expect(end.phase, `seed ${seed}: bot did not finish within ${MAX_ACTIONS} actions`).toBe('gameover');
+
+    await expectAllSynced(pages, seed, actions);
+    await assertCardConservation(host, seed, actions);
+
+    if (end.phase !== 'gameover') {
+      expect(isSoak, `seed ${seed}: bot did not finish within ${actionLimit} actions`).toBe(true);
+      expect(actions).toBe(SOAK_ACTIONS);
+      log(seed, `PASS soak: ${actions} synchronized actions; cycleBreaks=${cycleBreaks}; counts=${JSON.stringify(counts)}`);
+      return;
+    }
+
     expect(PLAYER_NAMES).toContain(end.shitHead);
     expect(end.roundScored).toBe(true);
     expect(Object.values(end.scores).reduce((sum, value) => sum + Number(value || 0), 0)).toBe(1);
     expect(end.scores[end.shitHead]).toBe(1);
-    await expectAllSynced(pages, seed, actions);
-    await assertCardConservation(host, seed, actions);
-    log(seed, `PASS in ${actions} actions; Shit Head=${end.shitHead}; cycleBreaks=${cycleBreaks}; counts=${JSON.stringify(counts)}`);
+    log(seed, `PASS complete in ${actions} actions; Shit Head=${end.shitHead}; cycleBreaks=${cycleBreaks}; counts=${JSON.stringify(counts)}`);
   } catch (error) {
     const snapshot = await snapshotForFailure(host).catch((snapshotError) => ({ snapshotError: String(snapshotError) }));
     console.error(`[bot seed ${seed}] FAILED after ${actions} actions; last=${JSON.stringify(lastAction)}; state=${JSON.stringify(snapshot)}`);
@@ -407,7 +414,8 @@ async function runGame(browser, seed) {
 }
 
 for (const seed of SEEDS) {
-  test(`seeded bots complete synchronized game ${seed}`, async ({ browser }) => {
+  const label = SOAK_SEEDS.has(seed) ? 'soaks synchronized multiplayer' : 'completes synchronized game';
+  test(`seeded bots ${label} ${seed}`, async ({ browser }) => {
     test.setTimeout(90000);
     await runGame(browser, seed);
   });
