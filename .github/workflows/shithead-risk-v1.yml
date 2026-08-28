@@ -1,0 +1,30 @@
+name: Shithead Risk v1
+
+on:
+  push:
+    branches:
+      - feature/shithead-risk-v1
+  pull_request:
+    paths:
+      - 'shithead-risk-v1.js'
+      - 'tests/shithead-risk-v1*.test.js'
+      - 'SHITHEAD_RISK*.md'
+      - '.github/workflows/shithead-risk-v1.yml'
+
+jobs:
+  test-risk-engine:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run base risk tests
+        run: node tests/shithead-risk-v1.test.js
+
+      - name: Run calibration suite
+        run: node tests/shithead-risk-v1.calibration.test.js
