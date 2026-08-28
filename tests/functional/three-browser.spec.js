@@ -110,7 +110,6 @@ test('three real pages stay in sync through SORT, READY, PLAY and PICK UP', asyn
   await joinRoom(chris, 'Chris', roomCode);
 
   await expect(oliver.locator('#mpPlayers .room-player.connected')).toHaveCount(3);
-  await oliver.locator('#mpClose').click();
   await expect(oliver.locator('.multiplayer-start')).toBeVisible();
   await expect(oliver.locator('.multiplayer-start')).toBeEnabled();
   await oliver.locator('.multiplayer-start').click();
