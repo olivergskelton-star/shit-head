@@ -5,10 +5,21 @@ const { test, expect } = require('@playwright/test');
 const fakePeerSource = fs.readFileSync(path.join(__dirname, 'fake-peer.js'), 'utf8');
 const PLAYER_NAMES = ['Oliver', 'Dan', 'Chris'];
 const SEEDS = [11, 29, 47];
-const MAX_ACTIONS = 1500;
+const MAX_ACTIONS = 500;
 
 function log(seed, message) {
   console.log(`[bot seed ${seed}] ${message}`);
+}
+
+function seededRandom(seed) {
+  let t = (seed ^ 0x9E3779B9) >>> 0;
+  return () => {
+    t += 0x6D2B79F5;
+    let r = t;
+    r = Math.imul(r ^ (r >>> 15), r | 1);
+    r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 async function waitForMultiplayer(page) {
@@ -36,11 +47,11 @@ async function joinRoom(page, player, roomCode) {
   ), player);
 }
 
-async function installSeededRandom(host, seed) {
+async function installSeededDeal(host, seed) {
   await host.evaluate((value) => {
     let t = value >>> 0;
     window.__botOriginalRandom = Math.random;
-    Math.random = function seededRandom() {
+    Math.random = function seededRandomForDeal() {
       t += 0x6D2B79F5;
       let r = t;
       r = Math.imul(r ^ (r >>> 15), r | 1);
@@ -57,8 +68,8 @@ async function restoreRandom(host) {
   });
 }
 
-async function canonicalSignature(page) {
-  const value = await page.evaluate(() => {
+async function stateView(page, includeMessage = true) {
+  return page.evaluate((withMessage) => {
     const id = (card) => card ? `${card.rank}${card.suit}` : null;
     const players = Object.fromEntries(PLAYER_NAMES.map((name) => {
       const player = state.players[name];
@@ -71,7 +82,8 @@ async function canonicalSignature(page) {
         tableSlots: slots.map((slot) => ({ faceUp: id(slot?.faceUp), faceDown: id(slot?.faceDown) })),
       }];
     }));
-    return {
+
+    const view = {
       phase: state.phase,
       currentPlayer: state.currentPlayer,
       startingPlayer: state.startingPlayer,
@@ -83,11 +95,19 @@ async function canonicalSignature(page) {
       shitHead: state.shitHead || null,
       scores: { ...(state.scores || {}) },
       roundScored: !!state.roundScored,
-      lastMessage: state.lastMessage,
       players,
     };
-  });
-  return JSON.stringify(value);
+    if (withMessage) view.lastMessage = state.lastMessage;
+    return view;
+  }, includeMessage);
+}
+
+async function canonicalSignature(page) {
+  return JSON.stringify(await stateView(page, true));
+}
+
+async function positionSignature(page) {
+  return JSON.stringify(await stateView(page, false));
 }
 
 async function expectAllSynced(pages, seed, actionNo) {
@@ -154,12 +174,12 @@ async function openSeededGame(browser, seed) {
   await joinRoom(chris, 'Chris', roomCode);
   await expect(oliver.locator('#mpPlayers .room-player.connected')).toHaveCount(3);
 
-  await installSeededRandom(oliver, seed);
+  await installSeededDeal(oliver, seed);
   await oliver.locator('.room-lobby-primary').click();
   await Promise.all(pages.map((page) => page.waitForFunction(() => state.phase === 'setup')));
   await restoreRandom(oliver);
 
-  // Setup itself remains real UI: all three players independently press READY.
+  // Setup still uses the real UI and concurrent client proposals.
   for (const name of PLAYER_NAMES) {
     await byName[name].locator('.setup-ready').click();
     if (name !== 'Chris') {
@@ -174,75 +194,96 @@ async function openSeededGame(browser, seed) {
   return { context, pages, byName, host: oliver };
 }
 
-async function chooseAction(page, playerName) {
-  return page.evaluate((name) => {
+async function chooseAction(page, playerName, randomValue, repeatCount) {
+  return page.evaluate(({ name, random, repeats }) => {
     const api = window.ShitHeadTablePlay;
     const player = state.players[name];
     const slots = api.getSlots(name);
-    const order = ['4', '5', '6', '7', '8', '9', 'J', 'Q', 'K', 'A', '2', '3', '10'];
 
-    function groups(zone, cards) {
+    function uniqueActions(actions) {
+      const seen = new Set();
+      return actions.filter((action) => {
+        const key = JSON.stringify(action);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    function playOptions(zone, cards) {
       const grouped = new Map();
       cards.forEach((card, index) => {
         if (!card) return;
         if (!grouped.has(card.rank)) grouped.set(card.rank, []);
         grouped.get(card.rank).push({ zone, index });
       });
-      return [...grouped.entries()].map(([rank, refs]) => ({ rank, refs }));
+
+      const actions = [];
+      grouped.forEach((refs) => {
+        if (api.validateRefs(name, refs).ok) actions.push({ type: 'play', refs });
+        // Sometimes shed only one card, leaving the matching-card follow-up path
+        // to make the deterministic bots explore a different legal branch.
+        if (refs.length > 1) {
+          const single = [refs[0]];
+          if (api.validateRefs(name, single).ok) actions.push({ type: 'play', refs: single });
+        }
+      });
+      return actions;
     }
 
-    function priority(rank) {
-      if (rank === '10') return -30;
-      if (rank === '2') return -20;
-      if (rank === '3') return -10;
-      return order.indexOf(rank);
-    }
-
-    function best(options) {
-      return options
-        .filter((option) => api.validateRefs(name, option.refs).ok)
-        .sort((a, b) => b.refs.length - a.refs.length || priority(a.rank) - priority(b.rank))[0] || null;
-    }
-
+    let actions = [];
     if (state.followUpRank) {
       const rank = state.followUpRank;
       const handRefs = player.hand
         .map((card, index) => ({ card, index }))
         .filter(({ card }) => card.rank === rank)
         .map(({ index }) => ({ zone: 'hand', index }));
-      if (handRefs.length && api.validateRefs(name, handRefs).ok) return { type: 'play', refs: handRefs };
-
       const faceRefs = slots
         .map((slot, index) => ({ card: slot.faceUp, index }))
         .filter(({ card }) => card?.rank === rank)
         .map(({ index }) => ({ zone: 'faceUp', index }));
-      if (faceRefs.length && api.validateRefs(name, faceRefs).ok) return { type: 'play', refs: faceRefs };
-      return { type: 'finish' };
-    }
-
-    if (player.hand.length > 0 || state.drawPile.length > 0) {
-      const chosen = best(groups('hand', player.hand));
-      if (chosen) return { type: 'play', refs: chosen.refs };
+      if (handRefs.length && api.validateRefs(name, handRefs).ok) actions.push({ type: 'play', refs: handRefs });
+      if (handRefs.length > 1 && api.validateRefs(name, [handRefs[0]]).ok) actions.push({ type: 'play', refs: [handRefs[0]] });
+      if (faceRefs.length && api.validateRefs(name, faceRefs).ok) actions.push({ type: 'play', refs: faceRefs });
+      actions.push({ type: 'finish' });
+    } else if (player.hand.length > 0 || state.drawPile.length > 0) {
+      actions.push(...playOptions('hand', player.hand));
     } else {
-      const chosen = best(groups('faceUp', slots.map((slot) => slot.faceUp)));
-      if (chosen) return { type: 'play', refs: chosen.refs };
-      const blindIndex = slots.findIndex((_, index) => api.canBlind(name, index));
-      if (blindIndex >= 0) return { type: 'blind', slotIndex: blindIndex };
+      actions.push(...playOptions('faceUp', slots.map((slot) => slot.faceUp)));
+      slots.forEach((_, index) => {
+        if (api.canBlind(name, index)) actions.push({ type: 'blind', slotIndex: index });
+      });
     }
 
-    if (state.discard.length) return { type: 'pickup' };
-    return {
-      type: 'stuck',
-      snapshot: {
-        player: name,
-        hand: player.hand.map((card) => `${card.rank}${card.suit}`),
-        table: slots.map((slot) => ({ up: slot.faceUp ? `${slot.faceUp.rank}${slot.faceUp.suit}` : null, down: !!slot.faceDown })),
-        draw: state.drawPile.length,
-        discard: state.discard.length,
-        followUpRank: state.followUpRank || null,
-      },
-    };
-  }, playerName);
+    actions = uniqueActions(actions);
+
+    // A player is always allowed to pick up the pile. Normally the bot only does
+    // this when it cannot play. On a repeated position it becomes a deliberate
+    // escape route so a deterministic bot cannot grind the same legal loop forever.
+    if (!state.followUpRank && state.discard.length > 0 && (!actions.length || repeats > 1)) {
+      actions.push({ type: 'pickup' });
+    }
+
+    if (!actions.length) {
+      return {
+        type: 'stuck',
+        snapshot: {
+          player: name,
+          hand: player.hand.map((card) => `${card.rank}${card.suit}`),
+          table: slots.map((slot) => ({ up: slot.faceUp ? `${slot.faceUp.rank}${slot.faceUp.suit}` : null, down: !!slot.faceDown })),
+          draw: state.drawPile.length,
+          discard: state.discard.length,
+          followUpRank: state.followUpRank || null,
+        },
+      };
+    }
+
+    // Exact replayability: seed + action number gives the same random value, while
+    // repeated positions rotate farther through the candidate list.
+    const baseIndex = Math.floor(random * actions.length) % actions.length;
+    const index = (baseIndex + Math.max(0, repeats - 1)) % actions.length;
+    return actions[index];
+  }, { name: playerName, random: randomValue, repeats: repeatCount });
 }
 
 async function dispatchAction(page, action) {
@@ -287,8 +328,11 @@ async function snapshotForFailure(host) {
 
 async function runGame(browser, seed) {
   const { context, pages, byName, host } = await openSeededGame(browser, seed);
+  const rng = seededRandom(seed);
+  const seenPositions = new Map();
   let actions = 0;
   let lastAction = null;
+  let cycleBreaks = 0;
   const counts = { play: 0, blind: 0, pickup: 0, finish: 0 };
 
   try {
@@ -301,8 +345,13 @@ async function runGame(browser, seed) {
       expect(PLAYER_NAMES).toContain(player);
       const actor = byName[player];
       const before = await canonicalSignature(host);
-      const action = await chooseAction(actor, player);
-      lastAction = { player, action };
+      const position = await positionSignature(host);
+      const repeats = (seenPositions.get(position) || 0) + 1;
+      seenPositions.set(position, repeats);
+      if (repeats > 1) cycleBreaks += 1;
+
+      const action = await chooseAction(actor, player, rng(), repeats);
+      lastAction = { player, repeats, action };
       if (action.type === 'stuck') throw new Error(`Bot has no legal action: ${JSON.stringify(action.snapshot)}`);
       if (counts[action.type] !== undefined) counts[action.type] += 1;
 
@@ -311,7 +360,7 @@ async function runGame(browser, seed) {
       actions += 1;
 
       await expect.poll(() => canonicalSignature(host), {
-        timeout: 3000,
+        timeout: 2500,
         intervals: [10, 20, 40, 80],
         message: `seed ${seed}, action ${actions}: host state did not change after ${player} ${action.type}`,
       }).not.toBe(before);
@@ -319,7 +368,7 @@ async function runGame(browser, seed) {
       await expectAllSynced(pages, seed, actions);
       await assertCardConservation(host, seed, actions);
 
-      if (actions <= 5 || actions % 50 === 0) {
+      if (actions <= 5 || actions % 50 === 0 || repeats > 2) {
         const progress = await host.evaluate(() => ({
           phase: state.phase,
           current: state.currentPlayer,
@@ -329,7 +378,7 @@ async function runGame(browser, seed) {
           hands: Object.fromEntries(PLAYER_NAMES.map((name) => [name, state.players[name].hand.length])),
           out: [...(state.finishOrder || [])],
         }));
-        log(seed, `action ${actions}: ${player} ${action.type}; ${JSON.stringify(progress)}`);
+        log(seed, `action ${actions}: ${player} ${action.type}; repeat=${repeats}; ${JSON.stringify(progress)}`);
       }
     }
 
@@ -340,14 +389,14 @@ async function runGame(browser, seed) {
       scores: { ...state.scores },
       roundScored: state.roundScored,
     }));
-    expect(end.phase, `seed ${seed}: exceeded ${MAX_ACTIONS} actions`).toBe('gameover');
+    expect(end.phase, `seed ${seed}: bot did not finish within ${MAX_ACTIONS} actions`).toBe('gameover');
     expect(PLAYER_NAMES).toContain(end.shitHead);
     expect(end.roundScored).toBe(true);
     expect(Object.values(end.scores).reduce((sum, value) => sum + Number(value || 0), 0)).toBe(1);
     expect(end.scores[end.shitHead]).toBe(1);
     await expectAllSynced(pages, seed, actions);
     await assertCardConservation(host, seed, actions);
-    log(seed, `PASS in ${actions} actions; Shit Head=${end.shitHead}; counts=${JSON.stringify(counts)}`);
+    log(seed, `PASS in ${actions} actions; Shit Head=${end.shitHead}; cycleBreaks=${cycleBreaks}; counts=${JSON.stringify(counts)}`);
   } catch (error) {
     const snapshot = await snapshotForFailure(host).catch((snapshotError) => ({ snapshotError: String(snapshotError) }));
     console.error(`[bot seed ${seed}] FAILED after ${actions} actions; last=${JSON.stringify(lastAction)}; state=${JSON.stringify(snapshot)}`);
