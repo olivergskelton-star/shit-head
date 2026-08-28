@@ -152,7 +152,9 @@ playSelected = function playSelectedV2(name) {
 
   if (hasFollowUpCard(name, rank)) {
     state.followUpRank = rank;
-    state.lastMessage = `${n} played ${cards.length > 1 ? cards.length + " × " + rank : cardText(cards[0])}. Another ${rank} is available — add it or finish turn.`;
+    // Never put hidden-hand availability into shared state/ticker text. The active
+    // player can see their own matching card and gets the FINISH TURN control.
+    state.lastMessage = `${n} played ${cards.length > 1 ? cards.length + " × " + rank : cardText(cards[0])}.`;
   } else {
     state.followUpRank = null;
     if (rank === "2") state.lastMessage = `${n} reset the pile with a 2.`;

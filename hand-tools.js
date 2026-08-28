@@ -14,6 +14,8 @@ function sortHandFor(name) {
   });
 
   state.selected = [];
+  if (Array.isArray(state.selectedRefs)) state.selectedRefs = [];
+  state.selectedZone = null;
   if (state.setupSelection?.zone === "hand") state.setupSelection = null;
   state.lastMessage = `${publicName(name)} sorted the hand into house order.`;
   render();
