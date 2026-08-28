@@ -23,6 +23,10 @@
       .map((ref) => ({ zone: ref.zone, index: ref.index }));
   }
 
+  function publish() {
+    window.ShitHeadMultiplayer?.publishState?.();
+  }
+
   function attachHostActionListener(conn) {
     if (!conn || conn.__shitHeadAuthoritativePlayHook) return;
     conn.__shitHeadAuthoritativePlayHook = true;
@@ -38,7 +42,7 @@
         const refs = cleanRefs(data.refs).length ? cleanRefs(data.refs) : legacyRefs(data);
         if (!refs.length || !window.ShitHeadTablePlay?.playRefs) return;
         window.ShitHeadTablePlay.playRefs(player, refs);
-        window.ShitHeadMultiplayer?.publishState?.();
+        publish();
         return;
       }
 
@@ -46,7 +50,20 @@
         const slotIndex = Number(data.slotIndex ?? data.index);
         if (!Number.isInteger(slotIndex) || !window.ShitHeadTablePlay?.playFaceDown) return;
         window.ShitHeadTablePlay.playFaceDown(player, slotIndex);
-        window.ShitHeadMultiplayer?.publishState?.();
+        publish();
+        return;
+      }
+
+      if (data.type === 'authoritative-turn-action') {
+        if (data.action === 'pickup' && typeof pickupDiscard === 'function') {
+          pickupDiscard(player);
+          publish();
+          return;
+        }
+        if (data.action === 'finish' && typeof finishTurn === 'function') {
+          finishTurn(player);
+          publish();
+        }
       }
     });
   }
@@ -77,6 +94,11 @@
     sendBlind(player, slotIndex) {
       if (!clientConnection || !clientConnection.open) return false;
       clientConnection.send({ type: 'authoritative-face-down', player, slotIndex });
+      return true;
+    },
+    sendTurnAction(player, action) {
+      if (!clientConnection || !clientConnection.open || !['pickup', 'finish'].includes(action)) return false;
+      clientConnection.send({ type: 'authoritative-turn-action', player, action });
       return true;
     },
   };
