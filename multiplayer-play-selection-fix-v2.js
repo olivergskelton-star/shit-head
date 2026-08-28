@@ -127,6 +127,12 @@
   playerSeat.addEventListener('click', (event) => {
     if (!isOnlineTurn() || awaitingHost) return;
 
+    const sort = event.target.closest('.sort-hand');
+    if (sort) {
+      clearLocalSelection();
+      return;
+    }
+
     const blind = event.target.closest('.self-face-row button.table-blind-card[data-slot-index]');
     if (blind) {
       event.preventDefault();
