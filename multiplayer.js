@@ -51,13 +51,26 @@
   function publishState() {
     if (MP.role === "local" || MP.suppressPublish) return;
     const payload = { type: "state", state: snapshotState() };
-    if (MP.role === "host") broadcast(payload);
-    else send(MP.hostConnection, { type: "state-proposal", state: payload.state, player: MP.player });
+    if (MP.role === "host") {
+      broadcast(payload);
+      return;
+    }
+    // Whole-state proposals are ONLY used while players concurrently arrange
+    // their setup cards. Once play starts, clients send explicit actions instead.
+    if (state.phase === "setup") {
+      send(MP.hostConnection, { type: "state-proposal", state: payload.state, player: MP.player });
+    }
   }
   function schedulePublish() {
     if (MP.role === "local" || MP.suppressPublish) return;
     clearTimeout(MP.publishTimer);
     MP.publishTimer = setTimeout(publishState, 40);
+  }
+
+  function sendAction(action) {
+    if (MP.role !== "client" || !MP.hostConnection?.open || !action || typeof action !== "object") return false;
+    send(MP.hostConnection, { type: "action", player: MP.player, action: clone(action) });
+    return true;
   }
 
   function setViewer(player) {
@@ -306,6 +319,53 @@
     return true;
   }
 
+  function cleanActionRefs(refs) {
+    if (!Array.isArray(refs)) return [];
+    return refs
+      .filter((ref) => ref && (ref.zone === "hand" || ref.zone === "faceUp") && Number.isInteger(ref.index))
+      .map((ref) => ({ zone: ref.zone, index: ref.index }));
+  }
+
+  function executeHostAction(player, action) {
+    if (!action || typeof action !== "object" || state.phase !== "play") return false;
+
+    // Sorting changes only card order, not turn/game rules, so players may sort
+    // their own hand at any point during play.
+    if (action.type === "sort") {
+      if (typeof sortHandFor !== "function") return false;
+      sortHandFor(player);
+      return true;
+    }
+
+    if (state.currentPlayer !== player) return false;
+
+    if (action.type === "play") {
+      const refs = cleanActionRefs(action.refs);
+      if (!refs.length || !window.ShitHeadTablePlay?.playRefs) return false;
+      return window.ShitHeadTablePlay.playRefs(player, refs) !== false;
+    }
+
+    if (action.type === "blind") {
+      const slotIndex = Number(action.slotIndex);
+      if (!Number.isInteger(slotIndex) || !window.ShitHeadTablePlay?.playFaceDown) return false;
+      return window.ShitHeadTablePlay.playFaceDown(player, slotIndex) !== false;
+    }
+
+    if (action.type === "pickup") {
+      if (typeof pickupDiscard !== "function") return false;
+      pickupDiscard(player);
+      return true;
+    }
+
+    if (action.type === "finish") {
+      if (typeof finishTurn !== "function") return false;
+      finishTurn(player);
+      return true;
+    }
+
+    return false;
+  }
+
   function handleHostConnection(conn) {
     MP.connections.set(conn, { player: null });
     conn.on("data", (data) => {
@@ -323,19 +383,30 @@
         publishPresence();
         return;
       }
-      if (data.type === "state-proposal") {
-        const meta = MP.connections.get(conn);
-        if (!meta?.player || meta.player !== data.player) return;
 
-        // Setup is the only phase where multiple players legitimately change
-        // state at the same time, so merge by player instead of last-write-wins.
-        if (state.phase === "setup" && mergeSetupProposal(meta.player, data.state)) {
-          broadcast({ type: "state", state: snapshotState() });
-          return;
+      const meta = MP.connections.get(conn);
+      if (!meta?.player || meta.player !== data.player) return;
+
+      if (data.type === "action") {
+        MP.suppressPublish = true;
+        let accepted = false;
+        try {
+          accepted = executeHostAction(meta.player, data.action);
+        } finally {
+          MP.suppressPublish = false;
         }
+        send(conn, { type: "action-result", ok: accepted });
+        publishState();
+        return;
+      }
 
-        applySnapshot(data.state);
-        broadcast({ type: "state", state: snapshotState() });
+      if (data.type === "state-proposal") {
+        // Setup is the ONLY phase where client state is merged. Ignore any stale
+        // proposal that arrives after play has begun or the game has ended.
+        if (state.phase !== "setup") return;
+        if (mergeSetupProposal(meta.player, data.state)) {
+          broadcast({ type: "state", state: snapshotState() });
+        }
       }
     });
     conn.on("close", () => {
@@ -402,6 +473,8 @@
         } else if (data.type === "presence") {
           MP.presentPlayers = new Set(data.players || []);
           updateRoomUi();
+        } else if (data.type === "action-result" && data.ok === false) {
+          statusText.textContent = "The host rejected that action. The table has been resynchronised.";
         } else if (data.type === "rejected") {
           showError(data.message || "Could not join that seat.");
           resetOnlineState();
@@ -437,6 +510,7 @@
 
   window.ShitHeadMultiplayer = {
     publishState,
+    sendAction,
     disconnect: resetOnlineState,
     startGame: startOnlineGame,
     get status() { return { role: MP.role, roomCode: MP.roomCode, player: MP.player, players: [...onlinePlayers()] }; },
