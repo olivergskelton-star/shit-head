@@ -5,6 +5,10 @@ const { test, expect } = require('@playwright/test');
 const fakePeerSource = fs.readFileSync(path.join(__dirname, 'fake-peer.js'), 'utf8');
 const HOUSE_ORDER = ['4', '5', '6', '7', '8', '9', 'J', 'Q', 'K', 'A', '2', '3', '10'];
 
+function step(message) {
+  console.log(`[three-browser] ${message}`);
+}
+
 async function waitForMultiplayer(page) {
   await page.goto('/index.html');
   await page.waitForFunction(() => !!window.ShitHeadMultiplayer && !!document.querySelector('.multiplayer-trigger'));
@@ -103,22 +107,23 @@ test('three real pages stay in sync through SORT, READY, PLAY and PICK UP', asyn
   const pages = [oliver, dan, chris];
   const byName = { Oliver: oliver, Dan: dan, Chris: chris };
 
+  step('load three real game pages');
   await Promise.all(pages.map(waitForMultiplayer));
 
+  step('create and join one virtual room');
   const roomCode = await createRoom(oliver, 'Oliver');
   await joinRoom(dan, 'Dan', roomCode);
   await joinRoom(chris, 'Chris', roomCode);
-
   await expect(oliver.locator('#mpPlayers .room-player.connected')).toHaveCount(3);
+
+  step('start game and verify setup is synchronized');
   await expect(oliver.locator('.multiplayer-start')).toBeVisible();
   await expect(oliver.locator('.multiplayer-start')).toBeEnabled();
   await oliver.locator('.multiplayer-start').click();
-
   await Promise.all(pages.map((page) => page.waitForFunction(() => state.phase === 'setup')));
   await expectAllSynced(pages);
 
-  // SORT must work for host and both clients during setup and reach the host's
-  // canonical state instead of being overwritten by a delayed render.
+  step('sort all three hands during setup');
   for (const [name, page] of Object.entries(byName)) {
     await page.locator('.sort-hand').click();
     const locallySorted = await handSignature(page, name);
@@ -128,14 +133,11 @@ test('three real pages stay in sync through SORT, READY, PLAY and PICK UP', asyn
   }
   await expectAllSynced(pages);
 
-  // Deliberately make the THIRD READY come from a client. This is the exact path
-  // that previously left one browser in PLAY while the others remained in setup.
+  step('ready all three with third READY from client Chris');
   await oliver.locator('.setup-ready').click();
   await expect.poll(() => oliver.evaluate(() => state.setupReady.Oliver)).toBe(true);
-
   await dan.locator('.setup-ready').click();
   await expect.poll(() => oliver.evaluate(() => state.setupReady.Dan)).toBe(true);
-
   await chris.locator('.setup-ready').click();
   await Promise.all(pages.map((page) => page.waitForFunction(() => state.phase === 'play')));
   await expectAllSynced(pages);
@@ -144,26 +146,24 @@ test('three real pages stay in sync through SORT, READY, PLAY and PICK UP', asyn
   expect(new Set(starters).size).toBe(1);
   expect(['Oliver', 'Dan', 'Chris']).toContain(starters[0]);
 
-  // SORT during play is a harmless per-player action and must work even while it
-  // is somebody else's turn.
+  step('sort Dan during Oliver turn');
   await forceCleanTurn(oliver, pages, 'Oliver');
   await dan.locator('.sort-hand').click();
   const danSorted = await handSignature(dan, 'Dan');
   await expect.poll(() => handSignature(oliver, 'Dan')).toEqual(danSorted);
   await expectAllSynced(pages);
 
-  // Client PLAY uses the actual card selection UI and actual PLAY button.
+  step('client Dan selects a real card and clicks real PLAY');
   await forceCleanTurn(oliver, pages, 'Dan');
   await playFirstHandCard(dan, oliver, 'Dan');
   await expectAllSynced(pages);
 
-  // Host PLAY goes through the same visible controls but executes locally.
+  step('host Oliver selects a real card and clicks real PLAY');
   await forceCleanTurn(oliver, pages, 'Oliver');
   await playFirstHandCard(oliver, oliver, 'Oliver');
   await expectAllSynced(pages);
 
-  // PICK UP is also sent as a client action and must atomically clear the pile,
-  // increase that player's hand, and synchronise every page.
+  step('client Chris clicks real PICK UP');
   await oliver.evaluate(() => {
     state.phase = 'play';
     state.currentPlayer = 'Chris';
@@ -187,5 +187,6 @@ test('three real pages stay in sync through SORT, READY, PLAY and PICK UP', asyn
   await oliver.waitForFunction((before) => state.discard.length === 0 && state.players.Chris.hand.length === before + 5, chrisBefore);
   await expectAllSynced(pages);
 
+  step('PASS: SORT, READY, client PLAY, host PLAY and PICK UP all synchronized');
   await context.close();
 });
