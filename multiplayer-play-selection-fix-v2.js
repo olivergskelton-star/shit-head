@@ -1,6 +1,6 @@
 // 0.9.15 multiplayer selection layer.
 // Selection is private to each browser. Both host and clients use the same card-ref
-// model; the host executes locally, clients send the refs to the host.
+// model; the host executes locally, clients send the refs/actions to the host.
 (() => {
   let localRefs = [];
   let awaitingHost = false;
@@ -84,6 +84,8 @@
     const actions = playerSeat.querySelector('.play-actions');
     const play = actions?.querySelector('.play-selected');
     const hint = actions?.querySelector('.selection-hint');
+    const pickup = actions?.querySelector('.pickup-pile');
+    const finish = actions?.querySelector('.finish-turn');
     if (!actions || !play) return;
 
     const showPlay = localRefs.length > 0 || awaitingHost;
@@ -96,6 +98,9 @@
         ? `PLAY ${localRefs.length}`
         : 'PLAY';
 
+    if (pickup && awaitingHost) pickup.disabled = true;
+    if (finish && awaitingHost) finish.disabled = true;
+
     if (hint) {
       hint.hidden = false;
       hint.textContent = awaitingHost
@@ -104,6 +109,12 @@
           ? `${localRefs.length} matching cards selected`
           : 'Selected';
     }
+  }
+
+  function failSend(message) {
+    awaitingHost = false;
+    statusText.textContent = message;
+    paintSelection();
   }
 
   function playBlind(slotIndex) {
@@ -116,11 +127,31 @@
 
     const sent = window.ShitHeadAuthoritativePlay?.sendBlind?.(state.viewer, slotIndex);
     if (!sent) {
-      statusText.textContent = 'Could not send the blind card to the host. Check the room connection.';
+      failSend('Could not send the blind card to the host. Check the room connection.');
       return;
     }
     awaitingHost = true;
     clearLocalSelection();
+    paintSelection();
+  }
+
+  function doTurnAction(action) {
+    const role = onlineRole();
+    clearLocalSelection();
+
+    if (role === 'host') {
+      if (action === 'pickup') pickupDiscard(state.viewer);
+      else if (action === 'finish') finishTurn(state.viewer);
+      window.ShitHeadMultiplayer?.publishState?.();
+      return;
+    }
+
+    const sent = window.ShitHeadAuthoritativePlay?.sendTurnAction?.(state.viewer, action);
+    if (!sent) {
+      failSend(`Could not send ${action === 'pickup' ? 'PICK UP' : 'FINISH TURN'} to the host. Check the room connection.`);
+      return;
+    }
+    awaitingHost = true;
     paintSelection();
   }
 
@@ -130,6 +161,22 @@
     const sort = event.target.closest('.sort-hand');
     if (sort) {
       clearLocalSelection();
+      return;
+    }
+
+    const pickup = event.target.closest('.pickup-pile');
+    if (pickup && !pickup.disabled && !pickup.hidden) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      doTurnAction('pickup');
+      return;
+    }
+
+    const finish = event.target.closest('.finish-turn');
+    if (finish && !finish.disabled && !finish.hidden) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      doTurnAction('finish');
       return;
     }
 
@@ -173,8 +220,7 @@
 
       const sent = window.ShitHeadAuthoritativePlay?.send?.(state.viewer, refs);
       if (!sent) {
-        statusText.textContent = 'Could not send the play to the host. Check the room connection.';
-        paintSelection();
+        failSend('Could not send the play to the host. Check the room connection.');
         return;
       }
 
