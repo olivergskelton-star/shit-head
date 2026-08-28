@@ -1,1 +1,0 @@
-Active smoke validation branch.
