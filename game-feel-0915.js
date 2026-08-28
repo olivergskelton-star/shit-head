@@ -1,4 +1,4 @@
-// 0.9.15 visual feedback: messy public pile, run indicator and short card movement.
+// 0.9.17 visual feedback: messy public pile, run indicator and short card movement.
 (() => {
   const pileOffsets = [
     { x: -6, y: 4, r: -5 },
@@ -19,6 +19,12 @@
   }
 
   function renderPileFeel() {
+    const drawEmpty = state.drawPile.length === 0;
+    const drawBack = drawPileButton?.querySelector('.stacked');
+    drawPileButton?.classList.toggle('is-empty', drawEmpty);
+    if (drawBack) drawBack.hidden = drawEmpty;
+    drawPileButton?.setAttribute('aria-label', drawEmpty ? 'Draw pile empty' : `Draw pile, ${state.drawPile.length} cards`);
+
     if (!discardPile) return;
 
     discardPile.replaceChildren();
@@ -153,7 +159,7 @@
 
   let previous = null;
   const renderBeforeFeel = render;
-  render = function renderWith0915Feel() {
+  render = function renderWith0917Feel() {
     const before = previous;
     renderBeforeFeel();
     renderPileFeel();
