@@ -15,7 +15,12 @@ function coveredSlots(faceUps = ['A', 'K', 'Q'], faceDowns = ['4', '5', '6']) {
   }));
 }
 function p(hand = [c('4')], tableSlots = coveredSlots()) {
-  return { hand, tableSlots };
+  return {
+    hand,
+    tableSlots,
+    faceUp: tableSlots.map((slot) => slot.faceUp).filter(Boolean),
+    faceDown: tableSlots.map((slot) => slot.faceDown).filter(Boolean),
+  };
 }
 
 function step(message) {
