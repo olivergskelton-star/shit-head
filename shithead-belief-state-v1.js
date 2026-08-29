@@ -1,9 +1,9 @@
-// Shithead public belief state v1
+// Shithead public belief state v1.1
 //
-// This module NEVER uses the identities of hidden hands, face-down table cards,
-// or draw-pile cards. It starts from the public cards that have actually been
-// revealed and treats every remaining card as an unknown distributed across the
-// remaining hidden positions.
+// This module NEVER uses the identities of genuinely hidden hands, face-down table
+// cards, or draw-pile cards. It starts from cards that are public now OR remain
+// publicly known to be in a player's hand (for example after picking up the pile),
+// and treats every remaining card as an unknown distributed across hidden positions.
 (function initShitheadBeliefStateV1(root, factory) {
   const api = factory();
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
@@ -48,6 +48,17 @@
     }));
   }
 
+  function knownHandFor(player) {
+    if (!Array.isArray(player?.knownHand)) return [];
+    const handCount = Array.isArray(player?.hand) ? player.hand.length : 0;
+    return player.knownHand.filter((card) => !!rankOf(card)).slice(0, handCount);
+  }
+
+  function unknownHandCount(player) {
+    const hand = Array.isArray(player?.hand) ? player.hand.length : 0;
+    return Math.max(0, hand - knownHandFor(player).length);
+  }
+
   function addKnown(counts, card) {
     const rank = rankOf(card);
     if (rank && Object.prototype.hasOwnProperty.call(counts, rank)) counts[rank] += 1;
@@ -56,11 +67,14 @@
   function publicKnownRankCounts(gameState) {
     const counts = Object.fromEntries(RANKS.map((rank) => [rank, 0]));
 
-    // These identities are visible/public.
+    // These identities are visible/public now.
     (gameState?.discard || []).forEach((card) => addKnown(counts, card));
     (gameState?.burnPile || []).forEach((card) => addKnown(counts, card));
     Object.values(gameState?.players || {}).forEach((player) => {
       tableSlotsFor(player).forEach((slot) => addKnown(counts, slot.faceUp));
+      // These are no longer face-up, but everybody has already seen them and
+      // knows which player's hand they entered (e.g. a public pile pickup).
+      knownHandFor(player).forEach((card) => addKnown(counts, card));
     });
 
     return counts;
@@ -73,17 +87,24 @@
 
   function playerHiddenCount(player) {
     if (!player) return 0;
-    const hand = Array.isArray(player.hand) ? player.hand.length : 0;
     const faceDown = tableSlotsFor(player).filter((slot) => !!slot.faceDown).length;
-    return hand + faceDown;
+    return unknownHandCount(player) + faceDown;
   }
 
   function hiddenZoneCounts(gameState) {
-    const players = Object.fromEntries(Object.entries(gameState?.players || {}).map(([id, player]) => [id, {
-      hand: Array.isArray(player?.hand) ? player.hand.length : 0,
-      faceDown: tableSlotsFor(player).filter((slot) => !!slot.faceDown).length,
-      total: playerHiddenCount(player),
-    }]));
+    const players = Object.fromEntries(Object.entries(gameState?.players || {}).map(([id, player]) => {
+      const hand = Array.isArray(player?.hand) ? player.hand.length : 0;
+      const knownHand = knownHandFor(player).length;
+      const unknownHand = Math.max(0, hand - knownHand);
+      const faceDown = tableSlotsFor(player).filter((slot) => !!slot.faceDown).length;
+      return [id, {
+        hand,
+        knownHand,
+        unknownHand,
+        faceDown,
+        total: unknownHand + faceDown,
+      }];
+    }));
 
     return {
       players,
@@ -142,17 +163,20 @@
 
   function playerBeliefs(gameState) {
     return Object.fromEntries(Object.entries(gameState?.players || {}).map(([id, player]) => {
-      const zones = {
-        hand: Array.isArray(player?.hand) ? player.hand.length : 0,
-        faceDown: tableSlotsFor(player).filter((slot) => !!slot.faceDown).length,
-      };
+      const hand = Array.isArray(player?.hand) ? player.hand.length : 0;
+      const knownHand = knownHandFor(player).length;
+      const unknownHand = Math.max(0, hand - knownHand);
+      const faceDown = tableSlotsFor(player).filter((slot) => !!slot.faceDown).length;
+      const hiddenCards = unknownHand + faceDown;
       return [id, {
-        hiddenCards: zones.hand + zones.faceDown,
-        handCards: zones.hand,
-        faceDownCards: zones.faceDown,
-        allHidden: rankDistributionForHiddenSet(gameState, zones.hand + zones.faceDown),
-        hand: rankDistributionForHiddenSet(gameState, zones.hand),
-        faceDown: rankDistributionForHiddenSet(gameState, zones.faceDown),
+        hiddenCards,
+        handCards: hand,
+        knownHandCards: knownHand,
+        unknownHandCards: unknownHand,
+        faceDownCards: faceDown,
+        allHidden: rankDistributionForHiddenSet(gameState, hiddenCards),
+        hand: rankDistributionForHiddenSet(gameState, unknownHand),
+        faceDown: rankDistributionForHiddenSet(gameState, faceDown),
       }];
     }));
   }
@@ -174,8 +198,10 @@
   }
 
   return Object.freeze({
-    version: 'belief-v1',
+    version: 'belief-v1.1',
     RANKS,
+    knownHandFor,
+    unknownHandCount,
     publicKnownRankCounts,
     remainingRankCounts,
     hiddenZoneCounts,
