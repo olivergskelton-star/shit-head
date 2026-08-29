@@ -34,7 +34,7 @@
   }
 
   .seat-right .player-notepad {
-    right: -8px !important;
+    right: -6px !important;
     top: -24px !important;
     transform: rotate(5deg) scale(.88) !important;
     transform-origin: right top !important;
@@ -53,6 +53,6 @@
 @media (max-width: 380px) and (orientation: portrait) {
   .player-notepad { width: 108px !important; }
   .seat-left .player-notepad { left: -4px !important; }
-  .seat-right .player-notepad { right: -4px !important; }
+  .seat-right .player-notepad { right: -2px !important; }
   .seat-player .player-notepad { left: 1% !important; bottom: 35% !important; }
 }
