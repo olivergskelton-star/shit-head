@@ -1,0 +1,36 @@
+name: Shithead risk Node backtest
+
+on:
+  pull_request:
+    paths:
+      - 'shithead-risk-v1.js'
+      - 'shithead-belief-state-v1.js'
+      - 'shithead-public-risk-v1.js'
+      - 'tests/risk-*.js'
+      - 'package.json'
+      - '.github/workflows/risk-node-backtest.yml'
+
+jobs:
+  risk-backtest:
+    runs-on: ubuntu-latest
+    env:
+      SHITHEAD_RISK_GAMES: '300'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run pure Node risk calibration
+        run: npm run test:risk
+
+      - name: Upload calibration report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shithead-risk-node-backtest
+          path: test-results/shithead-risk-node-backtest.json
+          if-no-files-found: ignore
