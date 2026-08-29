@@ -1,0 +1,255 @@
+/* Build 0.9.20: drink-only coasters + paper player notepads. */
+
+/* The coaster is now atmosphere only: no name, score or printed metadata. */
+.beer-mat {
+  overflow: visible;
+  display: grid;
+  place-items: center;
+}
+
+.beer-mat .beer-mat-name-ring,
+.beer-mat .beer-mat-score,
+.beer-mat .beer-mat-label,
+.beer-mat .beer-mat-edit { display: none !important; }
+
+.beer-mat-drink {
+  position: relative !important;
+  inset: auto !important;
+  transform: translateY(-3px);
+  display: grid;
+  place-items: center;
+  width: 70%;
+  height: 70%;
+  font-size: 3rem !important;
+  line-height: 1;
+  filter: drop-shadow(0 5px 4px rgba(0,0,0,.34));
+  z-index: 5;
+}
+
+.self-beer-mat .beer-mat-drink { font-size: 3.75rem !important; }
+.opponent-beer-mat .beer-mat-drink { font-size: 2.7rem !important; }
+
+.beer-mat.drink-editable::before {
+  content: "choose drink";
+  position: absolute;
+  left: 50%;
+  bottom: -19px;
+  transform: translateX(-50%);
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.54);
+  color: rgba(255,255,255,.82);
+  font: 700 8px/1.2 system-ui, sans-serif;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+
+.beer-mat.drink-editable:hover::before,
+.beer-mat.drink-editable:focus-visible::before { opacity: 1; }
+
+/* The active-player signal stays on the coaster. */
+.seat.active .beer-mat {
+  box-shadow:
+    0 7px 12px rgba(0,0,0,.3),
+    inset 0 0 0 1px rgba(255,255,255,.5),
+    inset 0 0 0 5px rgba(98,67,34,.08),
+    0 0 0 3px rgba(255,62,62,.92),
+    0 0 24px rgba(255,46,46,.72) !important;
+}
+
+/* Drink chooser -------------------------------------------------------- */
+.drink-picker {
+  position: fixed;
+  z-index: 10000;
+  width: min(330px, calc(100vw - 24px));
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.24);
+  background: rgba(28,24,20,.96);
+  color: #fff;
+  box-shadow: 0 18px 44px rgba(0,0,0,.5);
+  backdrop-filter: blur(10px);
+}
+
+.drink-picker-title {
+  margin: 0 0 9px;
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.78);
+}
+
+.drink-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+
+.drink-picker-option {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 11px;
+  background: rgba(255,255,255,.07);
+  color: #fff;
+  min-height: 70px;
+  padding: 7px 5px;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.drink-picker-option:hover,
+.drink-picker-option:focus-visible {
+  outline: none;
+  border-color: rgba(255,255,255,.55);
+  background: rgba(255,255,255,.13);
+}
+
+.drink-picker-option.selected { box-shadow: inset 0 0 0 2px var(--accent); }
+.drink-picker-icon { font-size: 2rem; line-height: 1; }
+.drink-picker-label { font-size: .68rem; font-weight: 800; }
+
+/* Paper notepads ------------------------------------------------------- */
+.player-notepad {
+  position: absolute;
+  z-index: 92;
+  width: 132px;
+  min-height: 88px;
+  padding: 12px 12px 10px 17px;
+  box-sizing: border-box;
+  color: #25221d;
+  text-align: left;
+  font-family: "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive;
+  background:
+    linear-gradient(90deg, transparent 0 12px, rgba(198,78,78,.34) 12px 13px, transparent 13px),
+    repeating-linear-gradient(180deg, #fffdf1 0 21px, #cfd9e3 21px 22px);
+  border-radius: 2px 5px 4px 2px;
+  box-shadow: 0 7px 15px rgba(0,0,0,.31), inset 0 0 0 1px rgba(98,81,47,.12);
+  transform: rotate(-2deg);
+  user-select: none;
+}
+
+.player-notepad::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  background: radial-gradient(circle, rgba(70,63,54,.42) 0 1.5px, transparent 1.8px) 0 0/4px 14px;
+  opacity: .7;
+}
+
+.notepad-name {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  margin: 0 0 5px;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  font: inherit;
+  font-size: .93rem;
+  font-weight: 900;
+  cursor: default;
+}
+
+button.notepad-name { cursor: pointer; }
+button.notepad-name:hover,
+button.notepad-name:focus-visible {
+  outline: none;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+.notepad-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  height: 22px;
+  font-size: .72rem;
+  font-weight: 700;
+}
+
+.notepad-value {
+  font-size: 1rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.notepad-risk .notepad-value { font-size: 1.06rem; }
+.player-notepad.player-out { opacity: .68; }
+.player-notepad.player-out .notepad-risk .notepad-value { text-decoration: line-through; }
+
+/* Main player's pad sits to the left of the hand; drink/coaster stays right. */
+.seat-player .player-notepad {
+  left: 6%;
+  bottom: 17%;
+  transform: rotate(-3deg);
+}
+
+/* Opponent pads sit beside, not inside, their rotated card cluster. */
+.seat-left .player-notepad {
+  left: -164px;
+  top: -48px;
+  transform: rotate(-7deg);
+}
+
+.seat-right .player-notepad {
+  right: -164px;
+  top: -48px;
+  transform: rotate(7deg);
+}
+
+@media (max-height: 760px) and (min-width: 701px) {
+  .player-notepad { width: 118px; min-height: 80px; padding: 10px 10px 8px 15px; }
+  .seat-player .player-notepad { left: 4%; bottom: 15%; transform: rotate(-3deg) scale(.9); }
+  .seat-left .player-notepad { left: -140px; top: -38px; transform: rotate(-6deg) scale(.9); }
+  .seat-right .player-notepad { right: -140px; top: -38px; transform: rotate(6deg) scale(.9); }
+}
+
+@media (max-width: 700px) {
+  .beer-mat.drink-editable::before { display: none; }
+  .self-beer-mat .beer-mat-drink { font-size: 3.25rem !important; }
+  .opponent-beer-mat .beer-mat-drink { font-size: 2.1rem !important; }
+
+  .player-notepad {
+    width: 98px;
+    min-height: 64px;
+    padding: 8px 8px 6px 13px;
+    background:
+      linear-gradient(90deg, transparent 0 9px, rgba(198,78,78,.3) 9px 10px, transparent 10px),
+      repeating-linear-gradient(180deg, #fffdf1 0 17px, #cfd9e3 17px 18px);
+  }
+  .notepad-name { margin-bottom: 2px; font-size: .72rem; }
+  .notepad-row { height: 17px; font-size: .56rem; }
+  .notepad-value, .notepad-risk .notepad-value { font-size: .72rem; }
+
+  .seat-player .player-notepad {
+    left: 1.5%;
+    bottom: 17%;
+    transform: rotate(-3deg) scale(.84);
+    transform-origin: left bottom;
+  }
+  .seat-left .player-notepad {
+    left: -34px;
+    top: -43px;
+    transform: rotate(-6deg) scale(.72);
+    transform-origin: left top;
+  }
+  .seat-right .player-notepad {
+    right: -34px;
+    top: -43px;
+    transform: rotate(6deg) scale(.72);
+    transform-origin: right top;
+  }
+}
