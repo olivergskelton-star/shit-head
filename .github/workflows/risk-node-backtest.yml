@@ -13,6 +13,8 @@ on:
 jobs:
   risk-backtest:
     runs-on: ubuntu-latest
+    env:
+      SHITHEAD_RISK_GAMES: '60'
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
