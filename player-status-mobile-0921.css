@@ -1,0 +1,58 @@
+/* Build 0.9.21: mobile-only notepad legibility and placement polish. */
+@media (max-width: 700px) and (orientation: portrait) {
+  .player-notepad {
+    width: 112px !important;
+    min-height: 74px !important;
+    padding: 9px 10px 7px 15px !important;
+    background:
+      linear-gradient(90deg, transparent 0 10px, rgba(198,78,78,.3) 10px 11px, transparent 11px),
+      repeating-linear-gradient(180deg, #fffdf1 0 18px, #cfd9e3 18px 19px) !important;
+  }
+
+  .notepad-name {
+    margin-bottom: 3px !important;
+    font-size: .82rem !important;
+  }
+
+  .notepad-row {
+    height: 19px !important;
+    font-size: .62rem !important;
+  }
+
+  .notepad-value,
+  .notepad-risk .notepad-value {
+    font-size: .84rem !important;
+  }
+
+  /* Pull both opponent pads inward and down so they read as part of the table,
+     rather than sitting on the browser/screen edge. */
+  .seat-left .player-notepad {
+    left: -8px !important;
+    top: -24px !important;
+    transform: rotate(-5deg) scale(.88) !important;
+    transform-origin: left top !important;
+  }
+
+  .seat-right .player-notepad {
+    right: -8px !important;
+    top: -24px !important;
+    transform: rotate(5deg) scale(.88) !important;
+    transform-origin: right top !important;
+  }
+
+  /* The local pad lives in the open lower-left felt, above the setup action strip
+     and clear of the held hand. */
+  .seat-player .player-notepad {
+    left: 2% !important;
+    bottom: 34% !important;
+    transform: rotate(-3deg) scale(.96) !important;
+    transform-origin: left bottom !important;
+  }
+}
+
+@media (max-width: 380px) and (orientation: portrait) {
+  .player-notepad { width: 108px !important; }
+  .seat-left .player-notepad { left: -4px !important; }
+  .seat-right .player-notepad { right: -4px !important; }
+  .seat-player .player-notepad { left: 1% !important; bottom: 35% !important; }
+}
