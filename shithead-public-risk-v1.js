@@ -1,7 +1,8 @@
-// Shithead public risk v1
+// Shithead public risk v1.1
 //
-// Public-table risk uses a belief state over unseen cards. It NEVER reads hidden
-// hand identities, face-down identities or draw-pile identities; only their counts.
+// Public-table risk uses a belief state over genuinely unseen cards. It NEVER reads
+// hidden hand identities, face-down identities or draw-pile identities. Cards that
+// everyone has already seen enter a hand remain public knowledge via player.knownHand.
 (function initPublicRiskV1(root, factory) {
   const belief = typeof module !== 'undefined' && module.exports
     ? require('./shithead-belief-state-v1.js')
@@ -34,7 +35,6 @@
     if (Array.isArray(player.tableSlots) && player.tableSlots.length) {
       return [0, 1, 2].map((index) => ({
         faceUp: player.tableSlots[index]?.faceUp || null,
-        // Presence only. Never inspect the identity of the face-down card.
         hasFaceDown: !!player.tableSlots[index]?.faceDown,
       }));
     }
@@ -44,6 +44,16 @@
       faceUp: ups[index] || null,
       hasFaceDown: !!downs[index],
     }));
+  }
+
+  function knownHandFor(player) {
+    return typeof belief.knownHandFor === 'function' ? belief.knownHandFor(player) : [];
+  }
+
+  function unknownHandCount(player) {
+    if (typeof belief.unknownHandCount === 'function') return belief.unknownHandCount(player);
+    const hand = Array.isArray(player?.hand) ? player.hand.length : 0;
+    return Math.max(0, hand - knownHandFor(player).length);
   }
 
   function countsFor(player) {
@@ -108,6 +118,14 @@
     );
   }
 
+  function knownHandUtility(player, gameState) {
+    return knownHandFor(player).reduce((sum, card) => sum + contextualUtility(card.rank, gameState), 0);
+  }
+
+  function expectedHandUtility(player, gameState) {
+    return knownHandUtility(player, gameState) + expectedHiddenUtility(gameState, unknownHandCount(player));
+  }
+
   function visibleUtility(player, gameState) {
     return tableSlotsFor(player).reduce(
       (sum, slot) => sum + (slot.faceUp ? contextualUtility(slot.faceUp.rank, gameState) : 0),
@@ -144,14 +162,29 @@
     return RANKS.reduce((sum, rank) => sum + comboBonusForCount(counts[rank]), 0);
   }
 
+  function knownHandRankCounts(player) {
+    const counts = Object.fromEntries(RANKS.map((rank) => [rank, 0]));
+    knownHandFor(player).forEach((card) => {
+      if (Object.prototype.hasOwnProperty.call(counts, card.rank)) counts[card.rank] += 1;
+    });
+    return counts;
+  }
+
   function expectedHandComboStrength(player, gameState) {
     const handCount = Array.isArray(player?.hand) ? player.hand.length : 0;
     if (handCount < 2) return 0;
+    const unknownCount = unknownHandCount(player);
+    const knownCounts = knownHandRankCounts(player);
+    const remaining = belief.remainingRankCounts(gameState);
+
     return RANKS.reduce((sum, rank) => {
+      const known = knownCounts[rank] || 0;
+      const maxHits = Math.min(remaining[rank] || 0, unknownCount);
       let expected = 0;
-      const max = Math.min(4, handCount, belief.remainingRankCounts(gameState)[rank] || 0);
-      for (let hits = 2; hits <= max; hits += 1) {
-        expected += belief.probabilityOfRankCount(gameState, handCount, rank, hits) * comboBonusForCount(hits);
+      for (let hits = 0; hits <= maxHits; hits += 1) {
+        const totalRank = known + hits;
+        if (totalRank < 2) continue;
+        expected += belief.probabilityOfRankCount(gameState, unknownCount, rank, hits) * comboBonusForCount(totalRank);
       }
       return sum + expected;
     }, 0);
@@ -165,13 +198,20 @@
     tableSlotsFor(player).forEach((slot) => {
       if (slot.faceUp?.rank) visibleCounts[slot.faceUp.rank] += 1;
     });
+    const knownCounts = knownHandRankCounts(player);
+    const knownTotal = knownHandFor(player).length;
+    const unknownCount = unknownHandCount(player);
 
     return RANKS.reduce((sum, rank) => {
       if (!visibleCounts[rank]) return sum;
-      const pAllRank = belief.probabilityOfRankCount(gameState, handCount, rank, handCount);
+      const knownOfRank = knownCounts[rank] || 0;
+      if (knownTotal && knownOfRank !== knownTotal) return sum;
+      const pAllUnknownRank = unknownCount
+        ? belief.probabilityOfRankCount(gameState, unknownCount, rank, unknownCount)
+        : 1;
       const combined = handCount + visibleCounts[rank];
       const bonus = Math.max(0, comboBonusForCount(combined) - comboBonusForCount(handCount));
-      return sum + pAllRank * bonus;
+      return sum + pAllUnknownRank * bonus;
     }, 0);
   }
 
@@ -202,6 +242,10 @@
     return probability;
   }
 
+  function knownPlayableExists(player, gameState) {
+    return knownHandFor(player).some((card) => baseRisk.canPlayRank(card.rank, gameState));
+  }
+
   function visiblePlayableExists(player, gameState) {
     return tableSlotsFor(player).some((slot) => slot.faceUp && baseRisk.canPlayRank(slot.faceUp.rank, gameState));
   }
@@ -214,7 +258,9 @@
     const c = countsFor(player);
     if (!c.total || !(gameState?.discard?.length || 0)) return 0;
     if (c.hand > 0 || (gameState?.drawPile?.length || 0) > 0) {
-      return probabilityNoLegalInHiddenSet(gameState, c.hand);
+      if (knownPlayableExists(player, gameState)) return 0;
+      const unknown = unknownHandCount(player);
+      return unknown ? probabilityNoLegalInHiddenSet(gameState, unknown) : 1;
     }
     if (visiblePlayableExists(player, gameState)) return 0;
     if (exposedBlindCount(player) > 0) return probabilityNoLegalInHiddenSet(gameState, 1);
@@ -264,7 +310,7 @@
       }
 
       const burden = c.hand * config.burden.hand + c.faceUp * config.burden.faceUp + c.faceDown * config.burden.faceDown;
-      const expectedHand = expectedHiddenUtility(gameState, c.hand);
+      const expectedHand = expectedHandUtility(player, gameState);
       const expectedBlind = expectedHiddenUtility(gameState, c.faceDown) * config.blindUtilityWeight;
       const visible = visibleUtility(player, gameState);
       const cardQuality = -(expectedHand + expectedBlind + visible) * config.cardQualityWeight;
@@ -295,14 +341,14 @@
     if (!active.length) return Object.fromEntries(ids.map((id) => [id, 0]));
     if (active.length === 1) return Object.fromEntries(ids.map((id) => [id, id === active[0] ? 100 : 0]));
 
-    const mean = active.reduce((sum, id) => sum + details[id].riskScore, 0) / active.length;
-    const raw = Object.fromEntries(active.map((id) => [id, Math.exp((details[id].riskScore - mean) / config.temperature)]));
+    const maxScore = Math.max(...active.map((id) => details[id].riskScore));
+    const raw = Object.fromEntries(active.map((id) => [id, Math.exp((details[id].riskScore - maxScore) / config.temperature)]));
     const denominator = active.reduce((sum, id) => sum + raw[id], 0) || 1;
     return Object.fromEntries(ids.map((id) => [id, active.includes(id) ? (raw[id] / denominator) * 100 : 0]));
   }
 
   return Object.freeze({
-    version: 'public-belief-v1',
+    version: 'public-belief-v1.1',
     DEFAULTS,
     calculatePublicRiskDetails,
     calculatePublicShitheadProbability,
