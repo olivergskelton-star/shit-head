@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "test:functional": "playwright test tests/functional/*.spec.js",
-    "test:risk": "node tests/risk-node-backtest-fast.js"
+    "test:risk": "node tests/risk-node-backtest-features.js"
   },
   "devDependencies": {
     "@playwright/test": "1.55.0"
