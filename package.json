@@ -2,7 +2,8 @@
   "name": "shit-head-card-game",
   "private": true,
   "scripts": {
-    "test:functional": "playwright test tests/functional/*.spec.js"
+    "test:functional": "playwright test tests/functional/*.spec.js",
+    "test:risk": "node tests/risk-node-backtest.js"
   },
   "devDependencies": {
     "@playwright/test": "1.55.0"
