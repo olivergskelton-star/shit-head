@@ -17,9 +17,9 @@ function mean(values) {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 }
 
-async function resetSeededGame(page, seed) {
-  return page.evaluate(({ names, dealSeed }) => {
-    let t = dealSeed >>> 0;
+function seededDealInit(seed) {
+  return (value) => {
+    let t = value >>> 0;
     const originalRandom = Math.random;
     Math.random = function seededDealRandom() {
       t += 0x6D2B79F5;
@@ -28,24 +28,37 @@ async function resetSeededGame(page, seed) {
       r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
       return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
     };
+    window.__riskBacktestRestoreRandom = () => { Math.random = originalRandom; };
+  };
+}
 
-    try {
-      dealNewGame();
-    } finally {
-      Math.random = originalRandom;
-    }
+async function openSeededHeadlessGame(context, seed) {
+  const page = await context.newPage();
+  await page.addInitScript(seededDealInit(seed), seed);
+  await page.goto('/index.html');
+  await page.waitForFunction(() => window.ShitHeadTablePlay && state.phase === 'setup');
+  await page.evaluate(() => window.__riskBacktestRestoreRandom?.());
 
+  // Use the real setup transition from a clean page for every game. This avoids
+  // carrying phase, OUT, score or follow-up state from a completed round.
+  await page.evaluate((names) => {
     for (const name of names) {
       state.viewer = name;
       markSetupReady(name);
     }
     state.viewer = names[0];
+  }, PLAYER_NAMES);
+  await page.waitForFunction(() => state.phase === 'play');
 
-    return {
-      phase: state.phase,
-      currentPlayer: state.currentPlayer,
-    };
-  }, { names: PLAYER_NAMES, dealSeed: seed });
+  // Calibration needs the real state/rules transitions, not thousands of DOM
+  // redraws. Game-over, OUT, turn, burn and pickup decisions all happen before
+  // render() in the game engine, so it is safe to suppress rendering test-only.
+  await page.evaluate(() => {
+    window.__riskBacktestOriginalRender = render;
+    render = function riskBacktestNoopRender() {};
+    window.render = render;
+  });
+  return page;
 }
 
 async function runGameInsidePage(page, seed) {
@@ -83,9 +96,9 @@ async function runGameInsidePage(page, seed) {
         const slots = api.getSlots(name);
         const known = knownHandIds[name];
         return [name, {
-          // The model gets hand size, never the identity of a genuinely unseen card.
+          // Size is public; genuinely unseen identities are deliberately erased.
           hand: Array.from({ length: player.hand.length }, hidden),
-          // Publicly revealed cards stay known if they subsequently enter a hand.
+          // Cards everybody has already seen enter this hand remain public memory.
           knownHand: player.hand.filter((card) => known.has(id(card))).map(publicCard),
           tableSlots: slots.map((slot) => ({
             faceUp: publicCard(slot.faceUp),
@@ -106,6 +119,8 @@ async function runGameInsidePage(page, seed) {
       };
     }
 
+    // Bots may inspect the true local state to choose legal moves. The probability
+    // model never receives this signature; it only receives publicSnapshot().
     function positionSignature() {
       const parts = [state.currentPlayer, state.followUpRank || '-', String(state.drawPile.length)];
       parts.push(state.discard.map(id).join(','));
@@ -179,7 +194,7 @@ async function runGameInsidePage(page, seed) {
 
       actions = uniqueActions(actions);
       // Voluntary pickup is legal. Use it as a deterministic cycle breaker for
-      // deliberately simple bots when an identical position repeats.
+      // deliberately simple bots when an identical true position repeats.
       if (!state.followUpRank && state.discard.length > 0 && (!actions.length || repeatCount > 1)) {
         actions.push({ type: 'pickup' });
       }
@@ -208,18 +223,20 @@ async function runGameInsidePage(page, seed) {
       const currentIds = new Set(hand.map(id));
       const known = knownHandIds[name];
 
+      // A previously known card stops being in the known hand when it is played.
       for (const cardId of [...known]) {
         if (!currentIds.has(cardId)) known.delete(cardId);
       }
 
+      // A pile pickup publicly transfers every visible pile card into this hand.
       if (action.type === 'pickup') {
         for (const cardId of before.discardIds) {
           if (currentIds.has(cardId)) known.add(cardId);
         }
       }
 
-      // A failed blind publicly reveals the blind card and pile before both enter
-      // the hand. A successful blind never enters the hand, so adds nothing here.
+      // A failed blind publicly reveals the blind card plus the pile before both
+      // enter the player's hand. A successful blind does not enter the hand.
       if (action.type === 'blind') {
         for (const cardId of before.discardIds) {
           if (currentIds.has(cardId)) known.add(cardId);
@@ -337,6 +354,7 @@ function evaluateModel(games, config) {
     };
   });
 
+  // Every completed game has equal weight regardless of how many actions it took.
   return {
     games: games.length,
     logLoss: mean(perGame.map((row) => row.logLoss)),
@@ -373,21 +391,27 @@ function candidateConfigs() {
 }
 
 function stageReport(games, config) {
-  const stages = { early: [], middle: [], late: [] };
-  for (const game of games) {
+  const perGame = games.map((game) => {
+    const buckets = { early: [], middle: [], late: [] };
     const last = Math.max(1, game.samples.length - 1);
     game.samples.forEach((snapshot, index) => {
       const fraction = index / last;
       const stage = fraction < 1 / 3 ? 'early' : fraction < 2 / 3 ? 'middle' : 'late';
-      stages[stage].push(scoreOne(publicRisk.calculatePublicShitheadProbability(snapshot, config), game.loser));
+      buckets[stage].push(scoreOne(publicRisk.calculatePublicShitheadProbability(snapshot, config), game.loser));
     });
-  }
-  return Object.fromEntries(Object.entries(stages).map(([stage, rows]) => [stage, {
-    samples: rows.length,
-    logLoss: mean(rows.map((row) => row.logLoss)),
-    brier: mean(rows.map((row) => row.brier)),
-    loserProbability: mean(rows.map((row) => row.loserProbability)),
-    topHit: mean(rows.map((row) => row.topHit)),
+    return Object.fromEntries(Object.entries(buckets).map(([stage, rows]) => [stage, {
+      logLoss: mean(rows.map((row) => row.logLoss)),
+      brier: mean(rows.map((row) => row.brier)),
+      loserProbability: mean(rows.map((row) => row.loserProbability)),
+      topHit: mean(rows.map((row) => row.topHit)),
+    }]));
+  });
+
+  return Object.fromEntries(['early', 'middle', 'late'].map((stage) => [stage, {
+    logLoss: mean(perGame.map((game) => game[stage].logLoss)),
+    brier: mean(perGame.map((game) => game[stage].brier)),
+    loserProbability: mean(perGame.map((game) => game[stage].loserProbability)),
+    topHit: mean(perGame.map((game) => game[stage].topHit)),
   }]));
 }
 
@@ -430,39 +454,28 @@ test('public Shithead probability calibration uses complete seeded games and a h
     await route.fulfill({ status: 200, contentType: 'application/javascript', body: fakePeerSource });
   });
 
-  const page = await context.newPage();
   const completeGames = [];
   const skipped = [];
 
   try {
-    await page.goto('/index.html');
-    await page.waitForFunction(() => window.ShitHeadTablePlay && state.phase === 'setup');
-
-    // Calibration needs the real rules/state transitions, not thousands of DOM
-    // redraws. Game-over/out/turn decisions happen in the rules engine itself.
-    await page.evaluate(() => {
-      window.__riskBacktestOriginalRender = render;
-      render = function riskBacktestNoopRender() {};
-      window.render = render;
-    });
-
     for (let seed = 1; seed <= MAX_SEED && completeGames.length < TARGET_COMPLETE_GAMES; seed += 1) {
-      const reset = await resetSeededGame(page, seed);
-      expect(reset.phase, `seed ${seed} failed to enter play`).toBe('play');
-
-      const game = { seed, ...(await runGameInsidePage(page, seed)) };
-      if (game.completed) {
-        expect(PLAYER_NAMES).toContain(game.loser);
-        for (const snapshot of game.samples) assertSnapshotIsPublic(snapshot);
-        completeGames.push(game);
-        console.log(`[risk-backtest] seed ${seed} complete: ${game.actions} actions; Shit Head=${game.loser}; samples=${game.samples.length}`);
-      } else {
-        skipped.push({ seed, actions: game.actions, reason: game.reason });
-        console.log(`[risk-backtest] seed ${seed} skipped: ${game.actions} actions; ${game.reason}`);
+      const page = await openSeededHeadlessGame(context, seed);
+      try {
+        const game = { seed, ...(await runGameInsidePage(page, seed)) };
+        if (game.completed) {
+          expect(PLAYER_NAMES).toContain(game.loser);
+          for (const snapshot of game.samples) assertSnapshotIsPublic(snapshot);
+          completeGames.push(game);
+          console.log(`[risk-backtest] seed ${seed} complete: ${game.actions} actions; Shit Head=${game.loser}; samples=${game.samples.length}`);
+        } else {
+          skipped.push({ seed, actions: game.actions, reason: game.reason });
+          console.log(`[risk-backtest] seed ${seed} skipped: ${game.actions} actions; ${game.reason}`);
+        }
+      } finally {
+        await page.close();
       }
     }
   } finally {
-    await page.close();
     await context.close();
   }
 
@@ -515,8 +528,8 @@ test('public Shithead probability calibration uses complete seeded games and a h
   fs.writeFileSync('test-results/shithead-risk-backtest.json', JSON.stringify(report, null, 2));
   console.log(`[risk-backtest] REPORT ${JSON.stringify(report)}`);
 
-  // This is still an observational calibration experiment. The holdout result may
-  // beat or lose to equal odds; either outcome is useful evidence for the next model.
+  // Observational calibration: the holdout result is allowed to beat OR lose to
+  // equal odds. Either result is evidence for what the next model should change.
   expect(Number.isFinite(defaultHoldout.logLoss)).toBe(true);
   expect(Number.isFinite(tunedHoldout.logLoss)).toBe(true);
 });
