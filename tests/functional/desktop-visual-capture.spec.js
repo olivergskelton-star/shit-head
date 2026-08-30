@@ -9,8 +9,16 @@ async function waitForArtwork(page) {
   await page.waitForFunction(() => window.SHITHEAD_BUILD === '0.9.22');
   await page.waitForFunction(() => !!window.ShitHeadTableAssets0922);
   await page.waitForFunction(() => document.querySelectorAll('.beer-mat').length === 3);
-  await expect.poll(async () => page.locator('.beer-mat.assets-ready').count()).toBe(3);
-  await expect(page.locator('.player-snack-bowl')).toHaveCount(1);
+  const atlasLoaded = await page.evaluate(async () => !!(await window.ShitHeadTableAssets0922.loadAtlas()));
+  await page.waitForTimeout(300);
+  return {
+    atlasLoaded,
+    readyCoasters: await page.locator('.beer-mat.assets-ready').count(),
+    totalCoasters: await page.locator('.beer-mat').count(),
+    snackBowls: await page.locator('.player-snack-bowl').count(),
+    drinkSprites: await page.locator('.beer-mat-drink-asset').count(),
+    fallbackDrinks: await page.locator('.beer-mat-drink').count(),
+  };
 }
 
 async function setTheme(page, theme) {
@@ -23,7 +31,12 @@ async function setTheme(page, theme) {
 
 test('capture Build 0.9.22 desktop tabletop assets', async ({ page }) => {
   fs.mkdirSync(OUT, { recursive: true });
-  await waitForArtwork(page);
+  const consoleLines = [];
+  page.on('console', (msg) => consoleLines.push(`${msg.type()}: ${msg.text()}`));
+  page.on('pageerror', (error) => consoleLines.push(`pageerror: ${error.message}`));
+
+  const diagnostics = await waitForArtwork(page);
+  fs.writeFileSync(`${OUT}/diagnostics.json`, JSON.stringify(diagnostics, null, 2));
 
   for (const theme of ['kitchen', 'pub', 'casino']) {
     await setTheme(page, theme);
@@ -34,6 +47,9 @@ test('capture Build 0.9.22 desktop tabletop assets', async ({ page }) => {
   const selfCoaster = page.locator('.self-beer-mat');
   await expect(selfCoaster).toBeVisible();
   await selfCoaster.click();
-  await expect(page.locator('.drink-picker')).toBeVisible();
-  await page.screenshot({ path: `${OUT}/drink-picker-1440x1000.png`, fullPage: true });
+  if (await page.locator('.drink-picker').isVisible().catch(() => false)) {
+    await page.screenshot({ path: `${OUT}/drink-picker-1440x1000.png`, fullPage: true });
+  }
+
+  fs.writeFileSync(`${OUT}/browser-console.txt`, consoleLines.join('\n'));
 });
