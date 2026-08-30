@@ -1,0 +1,153 @@
+/* Build 0.9.22: photoreal tabletop assets.
+   Source PNGs live under assets/{drinks,coasters,snacks}/. */
+
+/* Keep the legacy CSS coaster as a graceful fallback until the venue PNG loads. */
+.beer-mat {
+  overflow: visible !important;
+}
+
+.beer-mat.assets-ready {
+  background: transparent !important;
+  box-shadow: none;
+}
+
+.beer-mat.assets-ready::after { display: none !important; }
+
+.beer-mat-coaster-asset {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 118%;
+  height: 118%;
+  transform: translate(-50%, -50%);
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+  filter: drop-shadow(0 7px 6px rgba(0,0,0,.36));
+}
+
+.beer-mat-drink-asset {
+  position: absolute;
+  left: 50%;
+  bottom: 4%;
+  width: 82%;
+  height: 112%;
+  transform: translateX(-50%);
+  object-fit: contain;
+  object-position: center bottom;
+  pointer-events: none;
+  user-select: none;
+  z-index: 4;
+  filter: drop-shadow(0 8px 5px rgba(0,0,0,.35));
+}
+
+.opponent-beer-mat .beer-mat-drink-asset {
+  width: 78%;
+  height: 108%;
+  bottom: 4%;
+}
+
+.self-beer-mat .beer-mat-drink-asset {
+  width: 86%;
+  height: 120%;
+  bottom: 3%;
+}
+
+/* Broad/short drinks can sit a little lower; tall stemware gets more height. */
+.beer-mat[data-drink="jd-coke"] .beer-mat-drink-asset,
+.beer-mat[data-drink="milk"] .beer-mat-drink-asset,
+.beer-mat[data-drink="lemonade"] .beer-mat-drink-asset {
+  width: 76%;
+  height: 102%;
+}
+
+.beer-mat[data-drink="red-wine"] .beer-mat-drink-asset,
+.beer-mat[data-drink="white-wine"] .beer-mat-drink-asset,
+.beer-mat[data-drink="martini"] .beer-mat-drink-asset {
+  width: 74%;
+  height: 124%;
+  bottom: -2%;
+}
+
+.beer-mat[data-drink="guinness"] .beer-mat-drink-asset,
+.beer-mat[data-drink="craft-beer"] .beer-mat-drink-asset,
+.beer-mat[data-drink="lager"] .beer-mat-drink-asset,
+.beer-mat[data-drink="mojito"] .beer-mat-drink-asset {
+  width: 76%;
+  height: 120%;
+}
+
+/* Preserve the red active-turn halo around the physical coaster. */
+.seat.active .beer-mat.assets-ready {
+  box-shadow:
+    0 0 0 3px rgba(255,62,62,.92),
+    0 0 24px rgba(255,46,46,.72) !important;
+}
+
+/* Real images in the drink chooser. */
+.drink-picker {
+  width: min(440px, calc(100vw - 24px));
+}
+
+.drink-picker-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  max-height: min(430px, 62vh);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.drink-picker-option {
+  min-height: 92px;
+}
+
+.drink-picker-asset {
+  width: 58px;
+  height: 62px;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 5px 3px rgba(0,0,0,.35));
+}
+
+.drink-picker-icon.asset-fallback {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 62px;
+  font-size: 2.15rem;
+}
+
+/* Decorative snack beside the main player's area. */
+.player-snack-bowl {
+  position: absolute;
+  right: -5%;
+  bottom: 24%;
+  width: 108px;
+  height: 86px;
+  object-fit: contain;
+  object-position: center bottom;
+  z-index: 86;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 9px 7px rgba(0,0,0,.4));
+  transform: rotate(2deg);
+}
+
+body[data-theme="pub"] .player-snack-bowl { transform: rotate(-3deg); }
+body[data-theme="casino"] .player-snack-bowl { transform: rotate(1deg); }
+
+@media (max-height: 760px) and (min-width: 701px) {
+  .player-snack-bowl {
+    right: -2%;
+    bottom: 22%;
+    width: 88px;
+    height: 72px;
+  }
+}
+
+@media (max-width: 700px) {
+  .drink-picker-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .drink-picker-option { min-height: 78px; }
+  .drink-picker-asset { width: 48px; height: 52px; }
+  .player-snack-bowl { display: none; }
+}
