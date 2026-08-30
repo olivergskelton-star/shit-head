@@ -2,7 +2,13 @@ const { test, expect } = require('@playwright/test');
 
 test('drink-only coasters and player notepads render with public risk', async ({ page }) => {
   await page.goto('/index.html');
-  await page.waitForFunction(() => window.SHITHEAD_BUILD === '0.9.21' && !!window.ShitHeadPublicRiskV1);
+  await page.waitForFunction(() => (
+    !!window.SHITHEAD_BUILD
+    && !!window.ShitHeadPublicRiskV1
+    && !!window.ShitHeadTableAssets0922
+    && document.querySelectorAll('.player-notepad').length === 3
+  ));
+  await page.evaluate(() => window.ShitHeadTableAssets0922.loadAtlas());
 
   await expect(page.locator('.player-notepad')).toHaveCount(3);
   await expect(page.locator('.beer-mat')).toHaveCount(3);
@@ -24,14 +30,18 @@ test('drink-only coasters and player notepads render with public risk', async ({
   const coffee = page.locator('.drink-picker-option[data-drink="coffee"]');
   await expect(coffee).toBeVisible();
   await coffee.click();
-  await expect(page.locator('.self-beer-mat .beer-mat-drink')).toHaveText('☕');
+  await expect(page.locator('.self-beer-mat')).toHaveAttribute('data-drink', 'coffee');
+  await expect(page.locator('.self-beer-mat [data-sprite="coffee"]')).toHaveCount(1);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('shithead-drink-Oliver'))).toBe('coffee');
 });
 
 test('portrait mobile notepads stay readable and inside the viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/index.html');
-  await page.waitForFunction(() => window.SHITHEAD_BUILD === '0.9.21' && document.querySelectorAll('.player-notepad').length === 3);
+  await page.waitForFunction(() => (
+    !!window.SHITHEAD_BUILD
+    && document.querySelectorAll('.player-notepad').length === 3
+  ));
   await page.waitForFunction(() => {
     const pad = document.querySelector('.player-notepad');
     return pad && pad.getBoundingClientRect().width > 85;

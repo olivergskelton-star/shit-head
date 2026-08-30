@@ -1,0 +1,90 @@
+/* Build 0.9.22: sprite-atlas sizing overrides. */
+.asset-sprite {
+  display: block;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+  background-clip: border-box;
+  pointer-events: none;
+  user-select: none;
+}
+
+.beer-mat-coaster-asset {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 118%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  filter: drop-shadow(0 7px 6px rgba(0,0,0,.36));
+}
+
+.beer-mat-drink-asset {
+  position: absolute;
+  left: 50%;
+  bottom: -12%;
+  width: 112%;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  z-index: 4;
+  filter: drop-shadow(0 8px 5px rgba(0,0,0,.35));
+}
+
+.opponent-beer-mat .beer-mat-drink-asset {
+  width: 108%;
+  bottom: -10%;
+}
+
+.self-beer-mat .beer-mat-drink-asset {
+  width: 118%;
+  bottom: -14%;
+}
+
+/* Squarer tumblers need less apparent height. */
+.beer-mat[data-drink="jd-coke"] .beer-mat-drink-asset,
+.beer-mat[data-drink="milk"] .beer-mat-drink-asset,
+.beer-mat[data-drink="lemonade"] .beer-mat-drink-asset {
+  width: 102%;
+  bottom: -8%;
+}
+
+/* Stemware can stand taller above the mat. */
+.beer-mat[data-drink="red-wine"] .beer-mat-drink-asset,
+.beer-mat[data-drink="white-wine"] .beer-mat-drink-asset,
+.beer-mat[data-drink="martini"] .beer-mat-drink-asset {
+  width: 122%;
+  bottom: -16%;
+}
+
+.drink-picker-asset {
+  width: 64px;
+  aspect-ratio: 1;
+  filter: drop-shadow(0 5px 3px rgba(0,0,0,.35));
+}
+
+.player-snack-bowl {
+  position: absolute;
+  right: -5%;
+  bottom: 20%;
+  width: 112px;
+  aspect-ratio: 1;
+  z-index: 86;
+  filter: drop-shadow(0 9px 7px rgba(0,0,0,.4));
+  transform: rotate(2deg);
+}
+
+body[data-theme="pub"] .player-snack-bowl { transform: rotate(-3deg); }
+body[data-theme="casino"] .player-snack-bowl { transform: rotate(1deg); }
+
+@media (max-height: 760px) and (min-width: 701px) {
+  .player-snack-bowl {
+    right: -2%;
+    bottom: 19%;
+    width: 92px;
+  }
+}
+
+@media (max-width: 700px) {
+  .drink-picker-asset { width: 54px; }
+  .player-snack-bowl { display: none; }
+}

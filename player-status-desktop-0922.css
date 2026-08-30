@@ -1,0 +1,52 @@
+/* Build 0.9.22: desktop-only paper scrap polish. */
+@media (min-width: 701px) {
+  /* Give the scraps enough physical paper to read as complete objects. */
+  .player-notepad {
+    width: 164px !important;
+    min-height: 98px !important;
+    padding: 12px 14px 10px 18px !important;
+  }
+
+  /* Never ellipsize a player's display name on desktop. */
+  .notepad-name {
+    width: 100% !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+    font-size: .9rem !important;
+    letter-spacing: -.015em;
+  }
+
+  /* Keep both opponent scraps entirely inside the stage. The room-stage clips
+     anything beyond its edge, so the old -164px offsets visibly cut the paper. */
+  .seat-left .player-notepad {
+    left: -96px !important;
+    top: -30px !important;
+    transform: rotate(-5deg) !important;
+  }
+
+  .seat-right .player-notepad {
+    right: -96px !important;
+    top: -30px !important;
+    transform: rotate(5deg) !important;
+  }
+
+  .seat-player .player-notepad {
+    left: 4% !important;
+    bottom: 19% !important;
+    transform: rotate(-2.5deg) !important;
+  }
+}
+
+@media (max-height: 760px) and (min-width: 701px) {
+  .player-notepad {
+    width: 154px !important;
+    min-height: 92px !important;
+    padding: 11px 12px 9px 17px !important;
+  }
+
+  .notepad-name { font-size: .85rem !important; }
+  .seat-left .player-notepad { left: -86px !important; top: -24px !important; }
+  .seat-right .player-notepad { right: -86px !important; top: -24px !important; }
+  .seat-player .player-notepad { left: 3.5% !important; bottom: 18% !important; }
+}

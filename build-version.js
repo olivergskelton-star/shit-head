@@ -1,6 +1,6 @@
 // Single visible build identifier for browser testing.
 // Increment this on every deployed change so testers can verify the live files.
-window.SHITHEAD_BUILD = "0.9.21";
+window.SHITHEAD_BUILD = "0.9.22";
 
 (() => {
   const host = document.querySelector('.topbar > div:first-child');
@@ -24,16 +24,27 @@ window.SHITHEAD_BUILD = "0.9.21";
   ].join(';');
   host.append(badge);
 
-  // 0.9.21 is deliberately a tiny visual/display patch. Load its mobile CSS now;
-  // load its risk-rounding wrapper after the parser-loaded game scripts exist.
-  const css = document.createElement('link');
-  css.rel = 'stylesheet';
-  css.href = `player-status-mobile-0921.css?v=${window.SHITHEAD_BUILD}`;
-  document.head.append(css);
+  [
+    'player-status-mobile-0921.css',
+    'player-status-desktop-0922.css',
+    'table-assets-0922.css',
+    'table-atlas-runtime-0922.css',
+  ].forEach((href) => {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = `${href}?v=${window.SHITHEAD_BUILD}`;
+    document.head.append(css);
+  });
 
   document.addEventListener('DOMContentLoaded', () => {
-    const script = document.createElement('script');
-    script.src = `player-status-rounding-0921.js?v=${window.SHITHEAD_BUILD}`;
-    document.body.append(script);
+    [
+      'player-status-rounding-0921.js',
+      'table-atlas-runtime-0922.js',
+    ].forEach((src) => {
+      const script = document.createElement('script');
+      script.async = false;
+      script.src = `${src}?v=${window.SHITHEAD_BUILD}`;
+      document.body.append(script);
+    });
   }, { once: true });
 })();
