@@ -24,8 +24,13 @@ window.SHITHEAD_BUILD = "0.9.22";
   ].join(';');
   host.append(badge);
 
-  // Keep the 0.9.21 portrait fixes and add the 0.9.22 desktop-only paper geometry.
-  ['player-status-mobile-0921.css', 'player-status-desktop-0922.css'].forEach((href) => {
+  // Keep the 0.9.21 portrait fixes, 0.9.22 desktop paper geometry and the
+  // photoreal table-asset presentation layer.
+  [
+    'player-status-mobile-0921.css',
+    'player-status-desktop-0922.css',
+    'table-assets-0922.css',
+  ].forEach((href) => {
     const css = document.createElement('link');
     css.rel = 'stylesheet';
     css.href = `${href}?v=${window.SHITHEAD_BUILD}`;
@@ -33,8 +38,14 @@ window.SHITHEAD_BUILD = "0.9.22";
   });
 
   document.addEventListener('DOMContentLoaded', () => {
-    const script = document.createElement('script');
-    script.src = `player-status-rounding-0921.js?v=${window.SHITHEAD_BUILD}`;
-    document.body.append(script);
+    [
+      'player-status-rounding-0921.js',
+      'table-assets-0922.js',
+    ].forEach((src) => {
+      const script = document.createElement('script');
+      script.async = false;
+      script.src = `${src}?v=${window.SHITHEAD_BUILD}`;
+      document.body.append(script);
+    });
   }, { once: true });
 })();
