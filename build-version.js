@@ -24,12 +24,11 @@ window.SHITHEAD_BUILD = "0.9.22";
   ].join(';');
   host.append(badge);
 
-  // Keep the 0.9.21 portrait fixes, 0.9.22 desktop paper geometry and the
-  // photoreal table-asset presentation layer.
   [
     'player-status-mobile-0921.css',
     'player-status-desktop-0922.css',
     'table-assets-0922.css',
+    'table-atlas-runtime-0922.css',
   ].forEach((href) => {
     const css = document.createElement('link');
     css.rel = 'stylesheet';
@@ -40,7 +39,7 @@ window.SHITHEAD_BUILD = "0.9.22";
   document.addEventListener('DOMContentLoaded', () => {
     [
       'player-status-rounding-0921.js',
-      'table-assets-0922.js',
+      'table-atlas-runtime-0922.js',
     ].forEach((src) => {
       const script = document.createElement('script');
       script.async = false;
