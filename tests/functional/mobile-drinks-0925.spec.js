@@ -4,8 +4,13 @@ test('portrait mobile gives drink/coaster groups a visible tabletop footprint', 
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto('/index.html');
-  await page.waitForFunction(() => window.SHITHEAD_BUILD === '0.9.25');
-  await page.waitForFunction(() => !!document.querySelector('.self-beer-mat .beer-mat-drink-asset'));
+
+  await page.waitForFunction(() => (
+    window.SHITHEAD_BUILD === '0.9.25'
+    && !!document.querySelector('.self-beer-mat')
+    && !!document.querySelector('.seat-left .opponent-beer-mat')
+    && !!document.querySelector('.seat-right .opponent-beer-mat')
+  ));
 
   const self = page.locator('.self-beer-mat');
   const left = page.locator('.seat-left .opponent-beer-mat');
@@ -15,17 +20,32 @@ test('portrait mobile gives drink/coaster groups a visible tabletop footprint', 
   await expect(left).toBeVisible();
   await expect(right).toBeVisible();
 
-  const sizes = await page.evaluate(() => ({
-    self: document.querySelector('.self-beer-mat').getBoundingClientRect().width,
-    left: document.querySelector('.seat-left .opponent-beer-mat').getBoundingClientRect().width,
-    right: document.querySelector('.seat-right .opponent-beer-mat').getBoundingClientRect().width,
-    selfDrink: document.querySelector('.self-beer-mat .beer-mat-drink-asset').getBoundingClientRect().width,
-  }));
+  const metrics = await page.evaluate(() => {
+    const selfMat = document.querySelector('.self-beer-mat');
+    const leftMat = document.querySelector('.seat-left .opponent-beer-mat');
+    const rightMat = document.querySelector('.seat-right .opponent-beer-mat');
+    const cssLoaded = [...document.styleSheets].some((sheet) => (
+      String(sheet.href || '').includes('mobile-drinks-0925.css')
+    ));
 
-  expect(sizes.self).toBeGreaterThanOrEqual(70);
-  expect(sizes.left).toBeGreaterThanOrEqual(62);
-  expect(sizes.right).toBeGreaterThanOrEqual(62);
-  expect(sizes.selfDrink).toBeGreaterThan(80);
+    return {
+      cssLoaded,
+      self: selfMat.getBoundingClientRect().width,
+      left: leftMat.getBoundingClientRect().width,
+      right: rightMat.getBoundingClientRect().width,
+      selfScale: getComputedStyle(selfMat).getPropertyValue('--seat-drink-scale').trim(),
+      leftScale: getComputedStyle(leftMat).getPropertyValue('--seat-drink-scale').trim(),
+      selfTransform: getComputedStyle(selfMat.closest('.self-identity-row')).transform,
+    };
+  });
+
+  expect(metrics.cssLoaded).toBe(true);
+  expect(metrics.self).toBeGreaterThanOrEqual(70);
+  expect(metrics.left).toBeGreaterThanOrEqual(62);
+  expect(metrics.right).toBeGreaterThanOrEqual(62);
+  expect(metrics.selfScale).toBe('1.12');
+  expect(metrics.leftScale).toBe('1.02');
+  expect(metrics.selfTransform).toBe('none');
 
   await context.close();
 });
