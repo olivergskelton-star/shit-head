@@ -54,6 +54,7 @@
 
   let atlasUrl = null;
   let loading = null;
+  let atlasReady = false;
 
   function canonicalDrink(id) {
     const normalized = ALIASES[id] || id;
@@ -90,7 +91,7 @@
 
   function sprite(key, className) {
     const pos = SPRITES[key];
-    if (!atlasUrl || !pos) return null;
+    if (!atlasReady || !atlasUrl || !pos) return null;
     const [col, row] = pos;
 
     const frame = document.createElement('span');
@@ -249,28 +250,43 @@
     decorateSnack();
   };
 
+  function makeAtlasBlobUrl(base64) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    return URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }));
+  }
+
   async function loadAtlas() {
-    if (atlasUrl) return atlasUrl;
+    if (atlasReady && atlasUrl) return atlasUrl;
     if (loading) return loading;
+
+    document.documentElement.dataset.tableAssets = 'loading';
     loading = Promise.all(Array.from({ length: PARTS }, async (_, index) => {
       const part = String(index).padStart(2, '0');
       const response = await fetch(`assets/atlas/part-${part}.txt?v=${BUILD}`);
       if (!response.ok) throw new Error(`Atlas part ${part} failed: ${response.status}`);
       return (await response.text()).trim();
     })).then((parts) => {
-      atlasUrl = `data:image/webp;base64,${parts.join('')}`;
+      const nextUrl = makeAtlasBlobUrl(parts.join(''));
       return new Promise((resolve, reject) => {
         const probe = new Image();
-        probe.onload = () => resolve(atlasUrl);
-        probe.onerror = () => reject(new Error('Tabletop atlas could not be decoded'));
-        probe.src = atlasUrl;
+        probe.onload = () => resolve(nextUrl);
+        probe.onerror = () => {
+          URL.revokeObjectURL(nextUrl);
+          reject(new Error('Tabletop atlas could not be decoded'));
+        };
+        probe.src = nextUrl;
       });
     }).then((url) => {
+      atlasUrl = url;
+      atlasReady = true;
       document.documentElement.dataset.tableAssets = 'ready';
       render();
       return url;
     }).catch((error) => {
       console.warn('Tabletop artwork unavailable; keeping visual fallbacks.', error);
+      atlasReady = false;
       document.documentElement.dataset.tableAssets = 'fallback';
       loading = null;
       return null;
