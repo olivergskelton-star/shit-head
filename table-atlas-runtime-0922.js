@@ -61,8 +61,16 @@
 
   function getDrink(name) {
     const player = state.players?.[name];
-    const saved = localStorage.getItem(`shithead-drink-${name}`);
-    const id = canonicalDrink(player?.drink) || canonicalDrink(saved) || DEFAULTS[name] || 'red-wine';
+    const saved = canonicalDrink(localStorage.getItem(`shithead-drink-${name}`));
+    const current = canonicalDrink(player?.drink);
+    const mp = window.ShitHeadMultiplayer?.status;
+    const ownsSeat = name === state.viewer;
+    const onlineSetup = mp?.role === 'client' && (state.phase === 'lobby' || state.phase === 'setup');
+
+    // A client's own browser owns that player's cosmetic preference during the
+    // lobby/setup flow. Host snapshots must not overwrite Dan/Chris's saved drink
+    // before they get a chance to publish their own setup state.
+    const id = (ownsSeat && onlineSetup ? saved : current) || current || saved || DEFAULTS[name] || 'red-wine';
     if (player && player.drink !== id) player.drink = id;
     if (saved !== id) localStorage.setItem(`shithead-drink-${name}`, id);
     return id;

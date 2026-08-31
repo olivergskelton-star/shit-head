@@ -95,7 +95,7 @@ async function playFirstHandCard(actor, host, player) {
   await host.waitForFunction(({ name, count }) => state.players[name].hand.length < count, { name: player, count: before });
 }
 
-test('three real pages stay in sync through SORT, READY, PLAY and PICK UP', async ({ browser }) => {
+test('three real pages stay in sync through drinks, SORT, READY, PLAY and PICK UP', async ({ browser }) => {
   const context = await browser.newContext();
   await context.route('https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/javascript', body: fakePeerSource });
@@ -110,11 +110,16 @@ test('three real pages stay in sync through SORT, READY, PLAY and PICK UP', asyn
   step('load three real game pages');
   await Promise.all(pages.map(waitForMultiplayer));
 
+  step('give Dan a browser-owned saved drink before he joins');
+  await dan.evaluate(() => localStorage.setItem('shithead-drink-Dan', 'mojito'));
+
   step('create and join one virtual room');
   const roomCode = await createRoom(oliver, 'Oliver');
   await joinRoom(dan, 'Dan', roomCode);
   await joinRoom(chris, 'Chris', roomCode);
   await expect(oliver.locator('#mpPlayers .room-player.connected')).toHaveCount(3);
+  await expect.poll(() => dan.evaluate(() => state.players.Dan?.drink)).toBe('mojito');
+  await expect.poll(() => dan.evaluate(() => localStorage.getItem('shithead-drink-Dan'))).toBe('mojito');
 
   step('start game from the real in-dialog lobby button and verify setup is synchronized');
   const lobbyStart = oliver.locator('.room-lobby-primary');
@@ -124,6 +129,19 @@ test('three real pages stay in sync through SORT, READY, PLAY and PICK UP', asyn
   await lobbyStart.click();
   await Promise.all(pages.map((page) => page.waitForFunction(() => state.phase === 'setup')));
   await expectAllSynced(pages);
+  await expect.poll(() => dan.evaluate(() => state.players.Dan?.drink)).toBe('mojito');
+  await expect(dan.locator('.beer-mat[data-player="Dan"]')).toHaveAttribute('data-drink', 'mojito');
+
+  step('Dan chooses Guinness from the real drink picker and all three tables update');
+  await dan.locator('.self-beer-mat').click();
+  const guinness = dan.locator('.drink-picker-option[data-drink="guinness"]');
+  await expect(guinness).toBeVisible();
+  await guinness.click();
+  await expect.poll(() => oliver.evaluate(() => state.players.Dan?.drink)).toBe('guinness');
+  await expect.poll(async () => Promise.all(pages.map((page) => page.evaluate(() => state.players.Dan?.drink)))).toEqual(['guinness', 'guinness', 'guinness']);
+  for (const page of pages) {
+    await expect(page.locator('.beer-mat[data-player="Dan"]')).toHaveAttribute('data-drink', 'guinness');
+  }
 
   step('sort all three hands during setup');
   for (const [name, page] of Object.entries(byName)) {
@@ -189,6 +207,6 @@ test('three real pages stay in sync through SORT, READY, PLAY and PICK UP', asyn
   await oliver.waitForFunction((before) => state.discard.length === 0 && state.players.Chris.hand.length === before + 5, chrisBefore);
   await expectAllSynced(pages);
 
-  step('PASS: SORT, READY, client PLAY, host PLAY and PICK UP all synchronized');
+  step('PASS: drink choice, SORT, READY, client PLAY, host PLAY and PICK UP all synchronized');
   await context.close();
 });
