@@ -1,0 +1,1 @@
+Build 0.9.25 mobile visual intent: remove the portrait double-shrink from the local drink/coaster group, enlarge opponent coasters, move opponent drinks clear of notepads, and lift the local drink away from SORT. Desktop is unchanged.
