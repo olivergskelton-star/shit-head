@@ -1,11 +1,41 @@
-/* Build 0.9.24: sprite-atlas drink/coaster visual calibration. */
+/* Build 0.9.26: reliable sprite-atlas rendering + calibrated drink/coaster visuals. */
 .asset-sprite {
   display: block;
-  background-repeat: no-repeat;
-  background-origin: border-box;
-  background-clip: border-box;
+  position: relative;
+  overflow: hidden;
   pointer-events: none;
   user-select: none;
+}
+
+/*
+  The atlas is now rendered as a real image inside a cropped frame. This avoids
+  browser-specific failures painting a very large data URL as CSS background-image.
+*/
+.asset-sprite-sheet {
+  position: absolute;
+  display: block;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  object-fit: fill !important;
+  pointer-events: none;
+  user-select: none;
+}
+
+.asset-sprite-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 2;
+  font-size: 2rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.asset-sprite.sprite-loaded > .asset-sprite-fallback {
+  display: none;
 }
 
 .beer-mat-coaster-asset {
@@ -34,6 +64,10 @@
   transform-origin: center bottom;
   z-index: 4;
   filter: drop-shadow(0 8px 5px rgba(0,0,0,.35));
+}
+
+.beer-mat-drink-asset .asset-sprite-fallback {
+  font-size: 2.1rem;
 }
 
 .opponent-beer-mat { --seat-drink-scale: .94; }
@@ -110,11 +144,15 @@
   --drink-rotate: -1deg;
 }
 
-/* Picker previews now preserve those same relative proportions. */
+/* Picker previews preserve those same relative proportions. */
 .drink-picker-asset {
   width: 58px;
   aspect-ratio: 1;
   filter: drop-shadow(0 5px 3px rgba(0,0,0,.35));
+}
+
+.drink-picker-asset .asset-sprite-fallback {
+  font-size: 2rem;
 }
 
 .drink-picker-option[data-drink="coffee"] .drink-picker-asset,
@@ -160,7 +198,6 @@ body[data-theme="casino"] .player-snack-bowl { transform: rotate(1deg); }
 }
 
 @media (max-width: 700px) {
-  /* Keep the new proportions on mobile, but tame the overall footprint. */
   .self-beer-mat { --seat-drink-scale: .96; }
   .opponent-beer-mat { --seat-drink-scale: .88; }
 
