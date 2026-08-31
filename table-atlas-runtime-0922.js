@@ -1,7 +1,8 @@
-// Build 0.9.22: runtime for the chunked tabletop WebP atlas.
-// Keeps artwork separate from game rules and multiplayer state.
+// Build 0.9.26: reliable runtime for the chunked tabletop WebP atlas.
+// Uses real <img> cropping rather than CSS background-image data URLs so the
+// artwork paints consistently in the picker and after re-rendering.
 (() => {
-  const BUILD = window.SHITHEAD_BUILD || '0.9.22';
+  const BUILD = window.SHITHEAD_BUILD || '0.9.26';
   const PARTS = 6;
   const COLS = 5;
   const ROWS = 4;
@@ -67,9 +68,6 @@
     const ownsSeat = name === state.viewer;
     const onlineSetup = mp?.role === 'client' && (state.phase === 'lobby' || state.phase === 'setup');
 
-    // A client's own browser owns that player's cosmetic preference during the
-    // lobby/setup flow. Host snapshots must not overwrite Dan/Chris's saved drink
-    // before they get a chance to publish their own setup state.
     const id = (ownsSeat && onlineSetup ? saved : current) || current || saved || DEFAULTS[name] || 'red-wine';
     if (player && player.drink !== id) player.drink = id;
     if (saved !== id) localStorage.setItem(`shithead-drink-${name}`, id);
@@ -94,18 +92,47 @@
     const pos = SPRITES[key];
     if (!atlasUrl || !pos) return null;
     const [col, row] = pos;
-    const span = document.createElement('span');
-    span.className = `asset-sprite ${className}`;
-    span.dataset.sprite = key;
-    span.setAttribute('aria-hidden', 'true');
-    span.style.backgroundImage = `url("${atlasUrl}")`;
-    span.style.backgroundSize = `${COLS * 100}% ${ROWS * 100}%`;
-    span.style.backgroundPosition = `${col * 25}% ${row * (100 / 3)}%`;
-    return span;
+
+    const frame = document.createElement('span');
+    frame.className = `asset-sprite ${className}`;
+    frame.dataset.sprite = key;
+    frame.setAttribute('aria-hidden', 'true');
+
+    const sheet = document.createElement('img');
+    sheet.className = 'asset-sprite-sheet';
+    sheet.alt = '';
+    sheet.draggable = false;
+    sheet.decoding = 'async';
+    sheet.src = atlasUrl;
+    sheet.style.width = `${COLS * 100}%`;
+    sheet.style.height = `${ROWS * 100}%`;
+    sheet.style.left = `-${col * 100}%`;
+    sheet.style.top = `-${row * 100}%`;
+    frame.append(sheet);
+    return frame;
+  }
+
+  function markSpriteLoaded(frame) {
+    const image = frame?.querySelector('.asset-sprite-sheet');
+    if (!image) return;
+    const ready = () => {
+      if (image.naturalWidth > 0) frame.classList.add('sprite-loaded');
+    };
+    image.addEventListener('load', ready, { once: true });
+    if (image.complete) ready();
   }
 
   function drinkVisual(drink, spriteClass, fallbackClass) {
-    return sprite(drink.sprite, spriteClass) || fallback(drink, fallbackClass);
+    const visual = sprite(drink.sprite, spriteClass);
+    if (!visual) return fallback(drink, fallbackClass);
+
+    const safety = document.createElement('span');
+    safety.className = 'asset-sprite-fallback';
+    safety.textContent = drink.icon;
+    safety.setAttribute('aria-hidden', 'true');
+    visual.append(safety);
+    markSpriteLoaded(visual);
+    return visual;
   }
 
   function closePicker() {
@@ -177,7 +204,7 @@
     }, 0);
   }
 
-  makeBeerMat = function makeAtlasBeerMat0922(name, extraClass = '', editable = false) {
+  makeBeerMat = function makeAtlasBeerMat0926(name, extraClass = '', editable = false) {
     const id = getDrink(name);
     const drink = DRINKS[id] || DRINKS['red-wine'];
     const editableNow = editable && canEdit(name);
@@ -191,8 +218,14 @@
     const coaster = sprite(COASTERS[theme] || COASTERS.kitchen, 'beer-mat-coaster-asset');
     if (coaster) {
       mat.append(coaster);
-      mat.classList.add('assets-ready');
+      const coasterImage = coaster.querySelector('.asset-sprite-sheet');
+      const showRealCoaster = () => {
+        if (coasterImage?.naturalWidth > 0) mat.classList.add('assets-ready');
+      };
+      coasterImage?.addEventListener('load', showRealCoaster, { once: true });
+      if (coasterImage?.complete) showRealCoaster();
     }
+
     mat.append(drinkVisual(drink, 'beer-mat-drink-asset', 'beer-mat-drink'));
     mat.setAttribute('aria-label', `${publicName(name)}: ${drink.label}${editableNow ? '. Click to choose drink.' : ''}`);
     if (editableNow) mat.addEventListener('click', () => openPicker(name, mat));
@@ -204,11 +237,14 @@
     playerSeat.querySelector('.player-snack-bowl')?.remove();
     const theme = document.body.dataset.theme || 'kitchen';
     const bowl = sprite(SNACKS[theme] || SNACKS.kitchen, 'player-snack-bowl');
-    if (bowl) playerSeat.append(bowl);
+    if (bowl) {
+      markSpriteLoaded(bowl);
+      playerSeat.append(bowl);
+    }
   }
 
   const renderBeforeAtlas = render;
-  render = function renderWithAtlas0922() {
+  render = function renderWithAtlas0926() {
     renderBeforeAtlas();
     decorateSnack();
   };
@@ -230,10 +266,12 @@
         probe.src = atlasUrl;
       });
     }).then((url) => {
+      document.documentElement.dataset.tableAssets = 'ready';
       render();
       return url;
     }).catch((error) => {
       console.warn('Tabletop artwork unavailable; keeping visual fallbacks.', error);
+      document.documentElement.dataset.tableAssets = 'fallback';
       loading = null;
       return null;
     });
