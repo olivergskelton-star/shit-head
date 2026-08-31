@@ -1,0 +1,47 @@
+/* Build 0.9.25: portrait-phone drink/coaster composition.
+   The 0.9.24 vessel calibration was correct, but mobile then shrank the whole
+   coaster group again. These overrides make the drink/coaster read as a real
+   tabletop object while leaving the desktop composition untouched. */
+
+@media (max-width: 700px) and (orientation: portrait) {
+  /* Local player: remove the inherited 72% shrink and lift the coaster away
+     from SORT so it sits in the open felt beside the player's identity area. */
+  .self-identity-row {
+    right: 5% !important;
+    bottom: 30% !important;
+    transform: none !important;
+    transform-origin: center !important;
+  }
+
+  .self-beer-mat {
+    width: 72px !important;
+    height: 72px !important;
+    --seat-drink-scale: 1.12;
+  }
+
+  /* Opponents: make the coasters substantial enough to read, then move them
+     inward and slightly down so the drinks are clear of the notepads. */
+  .opponent-beer-mat {
+    width: 64px !important;
+    height: 64px !important;
+    --seat-drink-scale: 1.02;
+  }
+
+  .seat-left .opponent-beer-mat {
+    transform: translate(58px, 8px) rotate(-4deg) !important;
+  }
+
+  .seat-right .opponent-beer-mat {
+    transform: translate(-58px, 8px) rotate(4deg) !important;
+  }
+
+  /* Let the physical coaster itself remain visible around the larger drink. */
+  .beer-mat-coaster-asset {
+    width: 124% !important;
+  }
+
+  /* Stronger tabletop presence without adding a glow or changing artwork. */
+  .beer-mat-drink-asset {
+    filter: drop-shadow(0 7px 5px rgba(0,0,0,.4)) !important;
+  }
+}
