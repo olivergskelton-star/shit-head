@@ -1,0 +1,33 @@
+name: Repair atlas transport gaps
+
+on:
+  push:
+    branches:
+      - fix/atlas-visible-render-0926
+    paths:
+      - scripts/repair-atlas-parts.py
+      - .github/workflows/repair-atlas-parts.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/atlas-visible-render-0926
+      - name: Repair two clipped atlas parts
+        run: python scripts/repair-atlas-parts.py
+      - name: Commit repaired atlas
+        run: |
+          if git diff --quiet -- assets/atlas/part-07.txt assets/atlas/part-12.txt; then
+            echo "Atlas parts already repaired."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/atlas/part-07.txt assets/atlas/part-12.txt
+          git commit -m "Repair regenerated atlas transport gaps"
+          git push
