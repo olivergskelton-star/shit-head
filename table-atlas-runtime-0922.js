@@ -3,7 +3,7 @@
 // artwork paints consistently in the picker and after re-rendering.
 (() => {
   const BUILD = window.SHITHEAD_BUILD || '0.9.26';
-  const PARTS = 6;
+  const PARTS = 15;
   const COLS = 5;
   const ROWS = 4;
 
