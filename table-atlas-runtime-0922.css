@@ -1,4 +1,4 @@
-/* Build 0.9.22: sprite-atlas sizing overrides. */
+/* Build 0.9.24: sprite-atlas drink/coaster visual calibration. */
 .asset-sprite {
   display: block;
   background-repeat: no-repeat;
@@ -19,48 +19,123 @@
   filter: drop-shadow(0 7px 6px rgba(0,0,0,.36));
 }
 
+/*
+  Each atlas cell is square, but the real drinks are not. Build 0.9.24 stops
+  forcing every asset into the same apparent footprint and calibrates each
+  vessel against the physical coaster instead.
+*/
 .beer-mat-drink-asset {
   position: absolute;
   left: 50%;
-  bottom: -12%;
-  width: 112%;
+  bottom: -8%;
+  width: 108%;
   aspect-ratio: 1;
-  transform: translateX(-50%);
+  transform: translateX(-50%) scale(var(--seat-drink-scale, 1)) rotate(var(--drink-rotate, 0deg));
+  transform-origin: center bottom;
   z-index: 4;
   filter: drop-shadow(0 8px 5px rgba(0,0,0,.35));
 }
 
-.opponent-beer-mat .beer-mat-drink-asset {
-  width: 108%;
+.opponent-beer-mat { --seat-drink-scale: .94; }
+.self-beer-mat { --seat-drink-scale: 1.06; }
+
+/* Mugs and cups: compact, weighty and visibly lower than stemware. */
+.beer-mat[data-drink="coffee"] .beer-mat-drink-asset,
+.beer-mat[data-drink="tea"] .beer-mat-drink-asset,
+.beer-mat[data-drink="herbal-tea"] .beer-mat-drink-asset {
+  width: 91%;
+  bottom: -1%;
+  --drink-rotate: -1deg;
+}
+
+/* Milk is deliberately the smallest, simplest vessel on the table. */
+.beer-mat[data-drink="milk"] .beer-mat-drink-asset {
+  width: 87%;
+  bottom: 0;
+}
+
+/* Short tumblers should sit inside the coaster edge rather than tower over it. */
+.beer-mat[data-drink="jd-coke"] .beer-mat-drink-asset {
+  width: 95%;
+  bottom: -3%;
+  --drink-rotate: 1deg;
+}
+
+.beer-mat[data-drink="lemonade"] .beer-mat-drink-asset {
+  width: 100%;
+  bottom: -5%;
+  --drink-rotate: -1deg;
+}
+
+/* Pint glasses: substantial and broad, but not as visually tall as wine glasses. */
+.beer-mat[data-drink="lager"] .beer-mat-drink-asset,
+.beer-mat[data-drink="craft-beer"] .beer-mat-drink-asset,
+.beer-mat[data-drink="guinness"] .beer-mat-drink-asset {
+  width: 110%;
   bottom: -10%;
 }
 
-.self-beer-mat .beer-mat-drink-asset {
-  width: 118%;
-  bottom: -14%;
+.beer-mat[data-drink="craft-beer"] .beer-mat-drink-asset { --drink-rotate: -1deg; }
+.beer-mat[data-drink="guinness"] .beer-mat-drink-asset { --drink-rotate: 1deg; }
+
+/* Highballs and tropical cocktails bridge the tumbler/pint proportions. */
+.beer-mat[data-drink="mojito"] .beer-mat-drink-asset {
+  width: 104%;
+  bottom: -7%;
+  --drink-rotate: -1deg;
 }
 
-/* Squarer tumblers need less apparent height. */
-.beer-mat[data-drink="jd-coke"] .beer-mat-drink-asset,
-.beer-mat[data-drink="milk"] .beer-mat-drink-asset,
-.beer-mat[data-drink="lemonade"] .beer-mat-drink-asset {
-  width: 102%;
-  bottom: -8%;
+.beer-mat[data-drink="pina-colada"] .beer-mat-drink-asset {
+  width: 114%;
+  bottom: -11%;
+  --drink-rotate: 1deg;
 }
 
-/* Stemware can stand taller above the mat. */
-.beer-mat[data-drink="red-wine"] .beer-mat-drink-asset,
-.beer-mat[data-drink="white-wine"] .beer-mat-drink-asset,
+/* Stemware: narrow base on the mat, bowl visibly above the coaster. */
+.beer-mat[data-drink="red-wine"] .beer-mat-drink-asset {
+  width: 128%;
+  bottom: -19%;
+  --drink-rotate: -1deg;
+}
+
+.beer-mat[data-drink="white-wine"] .beer-mat-drink-asset {
+  width: 125%;
+  bottom: -18%;
+  --drink-rotate: 1deg;
+}
+
 .beer-mat[data-drink="martini"] .beer-mat-drink-asset {
-  width: 122%;
-  bottom: -16%;
+  width: 130%;
+  bottom: -21%;
+  --drink-rotate: -1deg;
 }
 
+/* Picker previews now preserve those same relative proportions. */
 .drink-picker-asset {
-  width: 64px;
+  width: 58px;
   aspect-ratio: 1;
   filter: drop-shadow(0 5px 3px rgba(0,0,0,.35));
 }
+
+.drink-picker-option[data-drink="coffee"] .drink-picker-asset,
+.drink-picker-option[data-drink="tea"] .drink-picker-asset,
+.drink-picker-option[data-drink="herbal-tea"] .drink-picker-asset,
+.drink-picker-option[data-drink="milk"] .drink-picker-asset { width: 48px; }
+
+.drink-picker-option[data-drink="jd-coke"] .drink-picker-asset,
+.drink-picker-option[data-drink="lemonade"] .drink-picker-asset { width: 53px; }
+
+.drink-picker-option[data-drink="lager"] .drink-picker-asset,
+.drink-picker-option[data-drink="craft-beer"] .drink-picker-asset,
+.drink-picker-option[data-drink="guinness"] .drink-picker-asset,
+.drink-picker-option[data-drink="mojito"] .drink-picker-asset { width: 60px; }
+
+.drink-picker-option[data-drink="pina-colada"] .drink-picker-asset { width: 64px; }
+
+.drink-picker-option[data-drink="red-wine"] .drink-picker-asset,
+.drink-picker-option[data-drink="white-wine"] .drink-picker-asset { width: 70px; }
+
+.drink-picker-option[data-drink="martini"] .drink-picker-asset { width: 72px; }
 
 .player-snack-bowl {
   position: absolute;
@@ -85,6 +160,18 @@ body[data-theme="casino"] .player-snack-bowl { transform: rotate(1deg); }
 }
 
 @media (max-width: 700px) {
-  .drink-picker-asset { width: 54px; }
+  /* Keep the new proportions on mobile, but tame the overall footprint. */
+  .self-beer-mat { --seat-drink-scale: .96; }
+  .opponent-beer-mat { --seat-drink-scale: .88; }
+
+  .drink-picker-asset { width: 50px; }
+  .drink-picker-option[data-drink="coffee"] .drink-picker-asset,
+  .drink-picker-option[data-drink="tea"] .drink-picker-asset,
+  .drink-picker-option[data-drink="herbal-tea"] .drink-picker-asset,
+  .drink-picker-option[data-drink="milk"] .drink-picker-asset { width: 43px; }
+  .drink-picker-option[data-drink="red-wine"] .drink-picker-asset,
+  .drink-picker-option[data-drink="white-wine"] .drink-picker-asset,
+  .drink-picker-option[data-drink="martini"] .drink-picker-asset { width: 58px; }
+
   .player-snack-bowl { display: none; }
 }
