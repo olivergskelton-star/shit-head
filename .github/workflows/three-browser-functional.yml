@@ -8,6 +8,7 @@ on:
   pull_request:
     paths:
       - '*.js'
+      - '*.css'
       - '*.html'
       - 'tests/functional/**'
       - 'package.json'
@@ -34,3 +35,11 @@ jobs:
 
       - name: Run three-browser smoke test
         run: npm run test:functional
+
+      - name: Upload desktop visual checks
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-visual-checks
+          path: artifacts/*.png
+          if-no-files-found: ignore
