@@ -1,6 +1,6 @@
 // Single visible build identifier for browser testing.
 // Increment this on every deployed change so testers can verify the live files.
-window.SHITHEAD_BUILD = "0.9.26";
+window.SHITHEAD_BUILD = "0.9.27";
 
 (() => {
   const host = document.querySelector('.topbar > div:first-child');
@@ -30,6 +30,7 @@ window.SHITHEAD_BUILD = "0.9.26";
     'table-assets-0922.css',
     'table-atlas-runtime-0922.css',
     'mobile-drinks-0925.css',
+    'drink-centering-0927.css',
   ].forEach((href) => {
     const css = document.createElement('link');
     css.rel = 'stylesheet';

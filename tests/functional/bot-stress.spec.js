@@ -416,7 +416,10 @@ async function runGame(browser, seed) {
 for (const seed of SEEDS) {
   const label = SOAK_SEEDS.has(seed) ? 'soaks synchronized multiplayer' : 'completes synchronized game';
   test(`seeded bots ${label} ${seed}`, async ({ browser }) => {
-    test.setTimeout(90000);
+    // A full deterministic three-browser game can legitimately exceed 90 seconds
+    // on shared CI runners once all visual assets are loaded. Per-action sync still
+    // retains its strict 2.5-second deadline, so this does not mask a stalled turn.
+    test.setTimeout(180000);
     await runGame(browser, seed);
   });
 }
