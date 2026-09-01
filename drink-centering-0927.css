@@ -1,0 +1,17 @@
+/* Build 0.9.27: centre the physical base of each desktop drink on its coaster. */
+@media (min-width: 701px) {
+  .beer-mat[data-drink="coffee"] .beer-mat-drink-asset { bottom: 37%; }
+  .beer-mat[data-drink="tea"] .beer-mat-drink-asset { bottom: 46%; }
+  .beer-mat[data-drink="herbal-tea"] .beer-mat-drink-asset { bottom: 43%; }
+  .beer-mat[data-drink="milk"] .beer-mat-drink-asset { bottom: 40%; }
+  .beer-mat[data-drink="jd-coke"] .beer-mat-drink-asset { bottom: 47%; }
+  .beer-mat[data-drink="lemonade"] .beer-mat-drink-asset { bottom: 46%; }
+  .beer-mat[data-drink="lager"] .beer-mat-drink-asset { bottom: 47%; }
+  .beer-mat[data-drink="craft-beer"] .beer-mat-drink-asset { bottom: 46%; }
+  .beer-mat[data-drink="guinness"] .beer-mat-drink-asset { bottom: 41%; }
+  .beer-mat[data-drink="mojito"] .beer-mat-drink-asset { bottom: 47%; }
+  .beer-mat[data-drink="pina-colada"] .beer-mat-drink-asset { bottom: 47%; left: 43%; }
+  .beer-mat[data-drink="red-wine"] .beer-mat-drink-asset { bottom: 42%; }
+  .beer-mat[data-drink="white-wine"] .beer-mat-drink-asset { bottom: 47%; }
+  .beer-mat[data-drink="martini"] .beer-mat-drink-asset { bottom: 46%; left: 49%; }
+}
