@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# One-shot source converter for Build 0.9.26 direct tabletop PNG assets.
 import base64
 import io
 from pathlib import Path
