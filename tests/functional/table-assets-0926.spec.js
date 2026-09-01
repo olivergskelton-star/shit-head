@@ -1,12 +1,12 @@
-// Build 0.9.26 direct-asset desktop regression.
+// Build 0.9.27 direct-asset desktop regression.
 const { test, expect } = require('@playwright/test');
 
-test('real direct drink artwork stays visible in picker and after drink re-render', async ({ browser }) => {
+test('real direct drink artwork stays visible and drink bases stay centred on coasters', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1150, height: 870 } });
   const page = await context.newPage();
   await page.goto('/index.html');
 
-  await page.waitForFunction(() => window.SHITHEAD_BUILD === '0.9.26' && !!window.ShitHeadTableAssets0922);
+  await page.waitForFunction(() => window.SHITHEAD_BUILD === '0.9.27' && !!window.ShitHeadTableAssets0922);
   await page.evaluate(() => window.ShitHeadTableAssets0922.loadAssets());
   await page.waitForFunction(() => document.documentElement.dataset.tableAssets === 'ready');
 
@@ -20,6 +20,13 @@ test('real direct drink artwork stays visible in picker and after drink re-rende
         && drink?.complete && drink.naturalWidth > 0;
     });
   });
+
+  const centredAnchors = await page.evaluate(() => [...document.querySelectorAll('.beer-mat')].map((mat) => {
+    const drinkAsset = mat.querySelector('.beer-mat-drink-asset');
+    const bottom = Number.parseFloat(getComputedStyle(drinkAsset).bottom);
+    return Math.abs(bottom - (mat.clientHeight / 2)) <= 0.6;
+  }));
+  expect(centredAnchors.every(Boolean)).toBeTruthy();
 
   const self = page.locator('.self-beer-mat');
   await expect(self).toBeVisible();
