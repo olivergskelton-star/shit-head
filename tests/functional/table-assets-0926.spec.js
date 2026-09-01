@@ -1,3 +1,4 @@
+// Build 0.9.26 direct-asset desktop regression.
 const { test, expect } = require('@playwright/test');
 
 test('real direct drink artwork stays visible in picker and after drink re-render', async ({ browser }) => {
