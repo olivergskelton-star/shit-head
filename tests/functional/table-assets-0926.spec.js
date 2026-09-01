@@ -1,4 +1,4 @@
-// Build 0.9.26 direct-asset desktop regression.
+// Direct-asset desktop regression introduced in Build 0.9.26.
 const { test, expect } = require('@playwright/test');
 
 test('real direct drink artwork stays visible in picker and after drink re-render', async ({ browser }) => {
@@ -6,7 +6,7 @@ test('real direct drink artwork stays visible in picker and after drink re-rende
   const page = await context.newPage();
   await page.goto('/index.html');
 
-  await page.waitForFunction(() => window.SHITHEAD_BUILD === '0.9.26' && !!window.ShitHeadTableAssets0922);
+  await page.waitForFunction(() => !!window.SHITHEAD_BUILD && !!window.ShitHeadTableAssets0922);
   await page.evaluate(() => window.ShitHeadTableAssets0922.loadAssets());
   await page.waitForFunction(() => document.documentElement.dataset.tableAssets === 'ready');
 
