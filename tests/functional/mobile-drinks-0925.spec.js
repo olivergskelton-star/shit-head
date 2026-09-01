@@ -5,8 +5,10 @@ test('portrait mobile gives drink/coaster groups a visible tabletop footprint', 
   const page = await context.newPage();
   await page.goto('/index.html');
 
+  // This regression protects the 0.9.25 mobile layout contract. It must keep
+  // running on later builds rather than pinning the entire app to 0.9.25.
   await page.waitForFunction(() => (
-    window.SHITHEAD_BUILD === '0.9.25'
+    !!window.SHITHEAD_BUILD
     && !!document.querySelector('.self-beer-mat')
     && !!document.querySelector('.seat-left .opponent-beer-mat')
     && !!document.querySelector('.seat-right .opponent-beer-mat')
