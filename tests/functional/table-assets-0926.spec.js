@@ -1,5 +1,6 @@
 // Direct-asset desktop regression introduced in Build 0.9.26.
 const { test, expect } = require('@playwright/test');
+const fs = require('node:fs');
 
 test('real direct drink artwork stays visible in picker and after drink re-render', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1150, height: 870 } });
@@ -20,6 +21,18 @@ test('real direct drink artwork stays visible in picker and after drink re-rende
         && drink?.complete && drink.naturalWidth > 0;
     });
   });
+
+  fs.mkdirSync('artifacts', { recursive: true });
+  await page.screenshot({ path: 'artifacts/desktop-final.png', fullPage: true });
+
+  const oliverDrink = page.locator('.self-beer-mat[data-drink="red-wine"] .beer-mat-drink-asset');
+  await expect(oliverDrink).toHaveCount(1);
+  const oliverAnchor = await page.locator('.self-beer-mat[data-drink="red-wine"]').evaluate((mat) => ({
+    bottom: Number.parseFloat(getComputedStyle(mat.querySelector('.beer-mat-drink-asset')).bottom),
+    matHeight: mat.clientHeight,
+  }));
+  expect(oliverAnchor.bottom / oliverAnchor.matHeight).toBeCloseTo(0.42, 2);
+  await page.screenshot({ path: 'artifacts/oliver-drink-centering.png', fullPage: true });
 
   const self = page.locator('.self-beer-mat');
   await expect(self).toBeVisible();
