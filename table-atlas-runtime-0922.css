@@ -1,29 +1,27 @@
-/* Build 0.9.26: reliable sprite-atlas rendering + calibrated drink/coaster visuals. */
-.asset-sprite {
+/* Build 0.9.26: direct PNG tabletop assets + calibrated drink/coaster visuals. */
+.asset-direct-frame {
   display: block;
   position: relative;
-  overflow: hidden;
   pointer-events: none;
   user-select: none;
 }
 
-/*
-  The atlas is now rendered as a real image inside a cropped frame. This avoids
-  browser-specific failures painting a very large data URL as CSS background-image.
-*/
-.asset-sprite-sheet {
+.asset-direct-image {
   position: absolute;
+  inset: 0;
   display: block;
+  width: 100%;
+  height: 100%;
   max-width: none !important;
   max-height: none !important;
   margin: 0 !important;
   padding: 0 !important;
-  object-fit: fill !important;
+  object-fit: contain;
   pointer-events: none;
   user-select: none;
 }
 
-.asset-sprite-fallback {
+.asset-direct-fallback {
   position: absolute;
   inset: 0;
   display: grid;
@@ -34,7 +32,7 @@
   pointer-events: none;
 }
 
-.asset-sprite.sprite-loaded > .asset-sprite-fallback {
+.asset-direct-frame.asset-loaded > .asset-direct-fallback {
   display: none;
 }
 
@@ -50,9 +48,9 @@
 }
 
 /*
-  Each atlas cell is square, but the real drinks are not. Build 0.9.24 stops
-  forcing every asset into the same apparent footprint and calibrates each
-  vessel against the physical coaster instead.
+  Each direct image keeps a square transparent canvas, but the real drinks are
+  calibrated individually against the physical coaster so vessel proportions
+  stay exactly as approved in Build 0.9.24.
 */
 .beer-mat-drink-asset {
   position: absolute;
@@ -66,7 +64,7 @@
   filter: drop-shadow(0 8px 5px rgba(0,0,0,.35));
 }
 
-.beer-mat-drink-asset .asset-sprite-fallback {
+.beer-mat-drink-asset .asset-direct-fallback {
   font-size: 2.1rem;
 }
 
@@ -151,7 +149,7 @@
   filter: drop-shadow(0 5px 3px rgba(0,0,0,.35));
 }
 
-.drink-picker-asset .asset-sprite-fallback {
+.drink-picker-asset .asset-direct-fallback {
   font-size: 2rem;
 }
 
