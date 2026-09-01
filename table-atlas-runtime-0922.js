@@ -1,60 +1,51 @@
-// Build 0.9.26: reliable runtime for the chunked tabletop WebP atlas.
-// Uses real <img> cropping rather than CSS background-image data URLs so the
-// artwork paints consistently in the picker and after re-rendering.
+// Build 0.9.26: direct tabletop PNG assets.
+// No atlas reconstruction, base64 chunks, Blob URLs or sprite coordinates.
 (() => {
   const BUILD = window.SHITHEAD_BUILD || '0.9.26';
-  const PARTS = 15;
-  const COLS = 5;
-  const ROWS = 4;
-
-  const SPRITES = Object.freeze({
-    coffee: [0, 0],
-    'craft-beer': [1, 0],
-    guinness: [2, 0],
-    tea: [3, 0],
-    'jd-coke': [4, 0],
-    lager: [0, 1],
-    lemonade: [1, 1],
-    martini: [2, 1],
-    milk: [3, 1],
-    mojito: [4, 1],
-    'pina-colada': [0, 2],
-    'red-wine': [1, 2],
-    'herbal-tea': [2, 2],
-    'white-wine': [3, 2],
-    'coaster-casino': [4, 2],
-    'coaster-kitchen': [0, 3],
-    'coaster-pub': [1, 3],
-    'snack-crisps': [2, 3],
-    'snack-nuts': [3, 3],
-    'snack-olives': [4, 3],
-  });
+  const ASSET_DIR = 'assets/table';
 
   const DRINKS = Object.freeze({
-    'red-wine': { label: 'Red Wine', sprite: 'red-wine', icon: '🍷' },
-    'white-wine': { label: 'White Wine', sprite: 'white-wine', icon: '🥂' },
-    lager: { label: 'Lager', sprite: 'lager', icon: '🍺' },
-    'craft-beer': { label: 'Craft Beer', sprite: 'craft-beer', icon: '🍺' },
-    guinness: { label: 'Guinness', sprite: 'guinness', icon: '🍺' },
-    coffee: { label: 'Coffee', sprite: 'coffee', icon: '☕' },
-    tea: { label: 'Tea', sprite: 'tea', icon: '🍵' },
-    'herbal-tea': { label: 'Herbal Tea', sprite: 'herbal-tea', icon: '🍵' },
-    milk: { label: 'Milk', sprite: 'milk', icon: '🥛' },
-    lemonade: { label: 'Lemonade', sprite: 'lemonade', icon: '🍋' },
-    martini: { label: 'Martini', sprite: 'martini', icon: '🍸' },
-    'jd-coke': { label: 'JD & Coke', sprite: 'jd-coke', icon: '🥃' },
-    'pina-colada': { label: 'Piña Colada', sprite: 'pina-colada', icon: '🍹' },
-    mojito: { label: 'Mojito', sprite: 'mojito', icon: '🍹' },
+    'red-wine': { label: 'Red Wine', file: 'red-wine.png', icon: '🍷' },
+    'white-wine': { label: 'White Wine', file: 'white-wine.png', icon: '🥂' },
+    lager: { label: 'Lager', file: 'lager.png', icon: '🍺' },
+    'craft-beer': { label: 'Craft Beer', file: 'craft-beer.png', icon: '🍺' },
+    guinness: { label: 'Guinness', file: 'guinness.png', icon: '🍺' },
+    coffee: { label: 'Coffee', file: 'coffee.png', icon: '☕' },
+    tea: { label: 'Tea', file: 'tea.png', icon: '🍵' },
+    'herbal-tea': { label: 'Herbal Tea', file: 'herbal-tea.png', icon: '🍵' },
+    milk: { label: 'Milk', file: 'milk.png', icon: '🥛' },
+    lemonade: { label: 'Lemonade', file: 'lemonade.png', icon: '🍋' },
+    martini: { label: 'Martini', file: 'martini.png', icon: '🍸' },
+    'jd-coke': { label: 'JD & Coke', file: 'jd-coke.png', icon: '🥃' },
+    'pina-colada': { label: 'Piña Colada', file: 'pina-colada.png', icon: '🍹' },
+    mojito: { label: 'Mojito', file: 'mojito.png', icon: '🍹' },
   });
 
   const ALIASES = Object.freeze({ wine: 'red-wine', beer: 'lager' });
   const DEFAULTS = Object.freeze({ Oliver: 'red-wine', Dan: 'lager', Chris: 'martini' });
-  const COASTERS = Object.freeze({ kitchen: 'coaster-kitchen', pub: 'coaster-pub', casino: 'coaster-casino' });
-  const SNACKS = Object.freeze({ kitchen: 'snack-nuts', pub: 'snack-crisps', casino: 'snack-olives' });
+  const COASTERS = Object.freeze({
+    kitchen: 'coaster-kitchen.png',
+    pub: 'coaster-pub.png',
+    casino: 'coaster-casino.png',
+  });
+  const SNACKS = Object.freeze({
+    kitchen: 'snack-nuts.png',
+    pub: 'snack-crisps.png',
+    casino: 'snack-olives.png',
+  });
 
-  let atlasUrl = null;
+  const ALL_FILES = Object.freeze([
+    ...Object.values(DRINKS).map((drink) => drink.file),
+    ...Object.values(COASTERS),
+    ...Object.values(SNACKS),
+  ]);
+
   let loading = null;
-  let atlasReady = false;
+  let assetsReady = false;
+
+  function assetUrl(file) {
+    return `${ASSET_DIR}/${file}?v=${BUILD}`;
+  }
 
   function canonicalDrink(id) {
     const normalized = ALIASES[id] || id;
@@ -69,7 +60,12 @@
     const ownsSeat = name === state.viewer;
     const onlineSetup = mp?.role === 'client' && (state.phase === 'lobby' || state.phase === 'setup');
 
-    const id = (ownsSeat && onlineSetup ? saved : current) || current || saved || DEFAULTS[name] || 'red-wine';
+    const id = (ownsSeat && onlineSetup ? saved : current)
+      || current
+      || saved
+      || DEFAULTS[name]
+      || 'red-wine';
+
     if (player && player.drink !== id) player.drink = id;
     if (saved !== id) localStorage.setItem(`shithead-drink-${name}`, id);
     return id;
@@ -81,59 +77,34 @@
     return !mp || mp.role === 'local' || state.phase === 'setup';
   }
 
-  function fallback(drink, className) {
-    const span = document.createElement('span');
-    span.className = className;
-    span.textContent = drink.icon;
-    span.setAttribute('aria-hidden', 'true');
-    return span;
-  }
-
-  function sprite(key, className) {
-    const pos = SPRITES[key];
-    if (!atlasReady || !atlasUrl || !pos) return null;
-    const [col, row] = pos;
-
+  function directVisual(file, className, fallbackIcon = '') {
     const frame = document.createElement('span');
-    frame.className = `asset-sprite ${className}`;
-    frame.dataset.sprite = key;
+    frame.className = `asset-direct-frame ${className}`;
+    frame.dataset.asset = file;
     frame.setAttribute('aria-hidden', 'true');
 
-    const sheet = document.createElement('img');
-    sheet.className = 'asset-sprite-sheet';
-    sheet.alt = '';
-    sheet.draggable = false;
-    sheet.decoding = 'async';
-    sheet.src = atlasUrl;
-    sheet.style.width = `${COLS * 100}%`;
-    sheet.style.height = `${ROWS * 100}%`;
-    sheet.style.left = `-${col * 100}%`;
-    sheet.style.top = `-${row * 100}%`;
-    frame.append(sheet);
-    return frame;
-  }
+    const image = document.createElement('img');
+    image.className = 'asset-direct-image';
+    image.alt = '';
+    image.draggable = false;
+    image.decoding = 'async';
+    image.src = assetUrl(file);
+    frame.append(image);
 
-  function markSpriteLoaded(frame) {
-    const image = frame?.querySelector('.asset-sprite-sheet');
-    if (!image) return;
-    const ready = () => {
-      if (image.naturalWidth > 0) frame.classList.add('sprite-loaded');
+    if (fallbackIcon) {
+      const fallback = document.createElement('span');
+      fallback.className = 'asset-direct-fallback';
+      fallback.textContent = fallbackIcon;
+      fallback.setAttribute('aria-hidden', 'true');
+      frame.append(fallback);
+    }
+
+    const markLoaded = () => {
+      if (image.naturalWidth > 0) frame.classList.add('asset-loaded');
     };
-    image.addEventListener('load', ready, { once: true });
-    if (image.complete) ready();
-  }
-
-  function drinkVisual(drink, spriteClass, fallbackClass) {
-    const visual = sprite(drink.sprite, spriteClass);
-    if (!visual) return fallback(drink, fallbackClass);
-
-    const safety = document.createElement('span');
-    safety.className = 'asset-sprite-fallback';
-    safety.textContent = drink.icon;
-    safety.setAttribute('aria-hidden', 'true');
-    visual.append(safety);
-    markSpriteLoaded(visual);
-    return visual;
+    image.addEventListener('load', markLoaded, { once: true });
+    if (image.complete) markLoaded();
+    return frame;
   }
 
   function closePicker() {
@@ -168,7 +139,7 @@
       button.type = 'button';
       button.className = `drink-picker-option${id === current ? ' selected' : ''}`;
       button.dataset.drink = id;
-      button.append(drinkVisual(drink, 'drink-picker-asset', 'drink-picker-icon asset-fallback'));
+      button.append(directVisual(drink.file, 'drink-picker-asset', drink.icon));
 
       const label = document.createElement('span');
       label.className = 'drink-picker-label';
@@ -205,7 +176,7 @@
     }, 0);
   }
 
-  makeBeerMat = function makeAtlasBeerMat0926(name, extraClass = '', editable = false) {
+  makeBeerMat = function makeDirectAssetBeerMat0926(name, extraClass = '', editable = false) {
     const id = getDrink(name);
     const drink = DRINKS[id] || DRINKS['red-wine'];
     const editableNow = editable && canEdit(name);
@@ -216,18 +187,16 @@
     mat.dataset.drink = id;
 
     const theme = document.body.dataset.theme || 'kitchen';
-    const coaster = sprite(COASTERS[theme] || COASTERS.kitchen, 'beer-mat-coaster-asset');
-    if (coaster) {
-      mat.append(coaster);
-      const coasterImage = coaster.querySelector('.asset-sprite-sheet');
-      const showRealCoaster = () => {
-        if (coasterImage?.naturalWidth > 0) mat.classList.add('assets-ready');
-      };
-      coasterImage?.addEventListener('load', showRealCoaster, { once: true });
-      if (coasterImage?.complete) showRealCoaster();
-    }
+    const coaster = directVisual(COASTERS[theme] || COASTERS.kitchen, 'beer-mat-coaster-asset');
+    mat.append(coaster);
+    const coasterImage = coaster.querySelector('.asset-direct-image');
+    const showRealCoaster = () => {
+      if (coasterImage?.naturalWidth > 0) mat.classList.add('assets-ready');
+    };
+    coasterImage?.addEventListener('load', showRealCoaster, { once: true });
+    if (coasterImage?.complete) showRealCoaster();
 
-    mat.append(drinkVisual(drink, 'beer-mat-drink-asset', 'beer-mat-drink'));
+    mat.append(directVisual(drink.file, 'beer-mat-drink-asset', drink.icon));
     mat.setAttribute('aria-label', `${publicName(name)}: ${drink.label}${editableNow ? '. Click to choose drink.' : ''}`);
     if (editableNow) mat.addEventListener('click', () => openPicker(name, mat));
     return mat;
@@ -237,64 +206,52 @@
     if (!playerSeat) return;
     playerSeat.querySelector('.player-snack-bowl')?.remove();
     const theme = document.body.dataset.theme || 'kitchen';
-    const bowl = sprite(SNACKS[theme] || SNACKS.kitchen, 'player-snack-bowl');
-    if (bowl) {
-      markSpriteLoaded(bowl);
-      playerSeat.append(bowl);
-    }
+    playerSeat.append(directVisual(SNACKS[theme] || SNACKS.kitchen, 'player-snack-bowl'));
   }
 
-  const renderBeforeAtlas = render;
-  render = function renderWithAtlas0926() {
-    renderBeforeAtlas();
+  const renderBeforeAssets = render;
+  render = function renderWithDirectAssets0926() {
+    renderBeforeAssets();
     decorateSnack();
   };
 
-  function makeAtlasBlobUrl(base64) {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-    return URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }));
+  function preload(file) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(file);
+      image.onerror = () => reject(new Error(`Direct table asset failed: ${file}`));
+      image.src = assetUrl(file);
+    });
   }
 
-  async function loadAtlas() {
-    if (atlasReady && atlasUrl) return atlasUrl;
+  async function loadAssets() {
+    if (assetsReady) return true;
     if (loading) return loading;
 
     document.documentElement.dataset.tableAssets = 'loading';
-    loading = Promise.all(Array.from({ length: PARTS }, async (_, index) => {
-      const part = String(index).padStart(2, '0');
-      const response = await fetch(`assets/atlas/part-${part}.txt?v=${BUILD}`);
-      if (!response.ok) throw new Error(`Atlas part ${part} failed: ${response.status}`);
-      return (await response.text()).trim();
-    })).then((parts) => {
-      const nextUrl = makeAtlasBlobUrl(parts.join(''));
-      return new Promise((resolve, reject) => {
-        const probe = new Image();
-        probe.onload = () => resolve(nextUrl);
-        probe.onerror = () => {
-          URL.revokeObjectURL(nextUrl);
-          reject(new Error('Tabletop atlas could not be decoded'));
-        };
-        probe.src = nextUrl;
-      });
-    }).then((url) => {
-      atlasUrl = url;
-      atlasReady = true;
+    loading = Promise.all(ALL_FILES.map(preload)).then(() => {
+      assetsReady = true;
       document.documentElement.dataset.tableAssets = 'ready';
       render();
-      return url;
+      return true;
     }).catch((error) => {
-      console.warn('Tabletop artwork unavailable; keeping visual fallbacks.', error);
-      atlasReady = false;
+      console.warn('Direct tabletop artwork unavailable; keeping visual fallbacks.', error);
+      assetsReady = false;
       document.documentElement.dataset.tableAssets = 'fallback';
       loading = null;
-      return null;
+      return false;
     });
     return loading;
   }
 
-  window.ShitHeadTableAssets0922 = Object.freeze({ drinks: DRINKS, coasters: COASTERS, snacks: SNACKS, sprites: SPRITES, loadAtlas });
+  window.ShitHeadTableAssets0922 = Object.freeze({
+    drinks: DRINKS,
+    coasters: COASTERS,
+    snacks: SNACKS,
+    loadAssets,
+    loadAtlas: loadAssets,
+  });
+
   render();
-  loadAtlas();
+  loadAssets();
 })();
