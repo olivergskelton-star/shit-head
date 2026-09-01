@@ -1,4 +1,4 @@
-/* Build 0.9.26: direct PNG tabletop assets + calibrated drink/coaster visuals. */
+/* Build 0.9.27: direct PNG tabletop assets + centred drink/coaster visuals. */
 .asset-direct-frame {
   display: block;
   position: relative;
@@ -48,14 +48,14 @@
 }
 
 /*
-  Each direct image keeps a square transparent canvas, but the real drinks are
-  calibrated individually against the physical coaster so vessel proportions
-  stay exactly as approved in Build 0.9.24.
+  Direct drink images are anchored by their base to the physical centre of the
+  coaster. Vessel-specific widths stay as calibrated in Build 0.9.24; only the
+  vertical anchor changes so glasses no longer sit below their mats.
 */
 .beer-mat-drink-asset {
   position: absolute;
   left: 50%;
-  bottom: -8%;
+  bottom: 50%;
   width: 108%;
   aspect-ratio: 1;
   transform: translateX(-50%) scale(var(--seat-drink-scale, 1)) rotate(var(--drink-rotate, 0deg));
@@ -71,40 +71,40 @@
 .opponent-beer-mat { --seat-drink-scale: .94; }
 .self-beer-mat { --seat-drink-scale: 1.06; }
 
-/* Mugs and cups: compact, weighty and visibly lower than stemware. */
+/* Mugs and cups: compact, weighty and centred on the coaster. */
 .beer-mat[data-drink="coffee"] .beer-mat-drink-asset,
 .beer-mat[data-drink="tea"] .beer-mat-drink-asset,
 .beer-mat[data-drink="herbal-tea"] .beer-mat-drink-asset {
   width: 91%;
-  bottom: -1%;
+  bottom: 50%;
   --drink-rotate: -1deg;
 }
 
 /* Milk is deliberately the smallest, simplest vessel on the table. */
 .beer-mat[data-drink="milk"] .beer-mat-drink-asset {
   width: 87%;
-  bottom: 0;
+  bottom: 50%;
 }
 
-/* Short tumblers should sit inside the coaster edge rather than tower over it. */
+/* Short tumblers keep their approved scale but share the centred base anchor. */
 .beer-mat[data-drink="jd-coke"] .beer-mat-drink-asset {
   width: 95%;
-  bottom: -3%;
+  bottom: 50%;
   --drink-rotate: 1deg;
 }
 
 .beer-mat[data-drink="lemonade"] .beer-mat-drink-asset {
   width: 100%;
-  bottom: -5%;
+  bottom: 50%;
   --drink-rotate: -1deg;
 }
 
-/* Pint glasses: substantial and broad, but not as visually tall as wine glasses. */
+/* Pint glasses: substantial and broad, but centred on the coaster. */
 .beer-mat[data-drink="lager"] .beer-mat-drink-asset,
 .beer-mat[data-drink="craft-beer"] .beer-mat-drink-asset,
 .beer-mat[data-drink="guinness"] .beer-mat-drink-asset {
   width: 110%;
-  bottom: -10%;
+  bottom: 50%;
 }
 
 .beer-mat[data-drink="craft-beer"] .beer-mat-drink-asset { --drink-rotate: -1deg; }
@@ -113,32 +113,32 @@
 /* Highballs and tropical cocktails bridge the tumbler/pint proportions. */
 .beer-mat[data-drink="mojito"] .beer-mat-drink-asset {
   width: 104%;
-  bottom: -7%;
+  bottom: 50%;
   --drink-rotate: -1deg;
 }
 
 .beer-mat[data-drink="pina-colada"] .beer-mat-drink-asset {
   width: 114%;
-  bottom: -11%;
+  bottom: 50%;
   --drink-rotate: 1deg;
 }
 
-/* Stemware: narrow base on the mat, bowl visibly above the coaster. */
+/* Stemware keeps the larger approved scale while its base sits on the mat centre. */
 .beer-mat[data-drink="red-wine"] .beer-mat-drink-asset {
   width: 128%;
-  bottom: -19%;
+  bottom: 50%;
   --drink-rotate: -1deg;
 }
 
 .beer-mat[data-drink="white-wine"] .beer-mat-drink-asset {
   width: 125%;
-  bottom: -18%;
+  bottom: 50%;
   --drink-rotate: 1deg;
 }
 
 .beer-mat[data-drink="martini"] .beer-mat-drink-asset {
   width: 130%;
-  bottom: -21%;
+  bottom: 50%;
   --drink-rotate: -1deg;
 }
 
