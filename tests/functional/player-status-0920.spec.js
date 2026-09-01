@@ -31,7 +31,9 @@ test('drink-only coasters and player notepads render with public risk', async ({
   await expect(coffee).toBeVisible();
   await coffee.click();
   await expect(page.locator('.self-beer-mat')).toHaveAttribute('data-drink', 'coffee');
-  await expect(page.locator('.self-beer-mat [data-sprite="coffee"]')).toHaveCount(1);
+  const coffeeImage = page.locator('.self-beer-mat .beer-mat-drink-asset .asset-direct-image');
+  await expect(coffeeImage).toHaveCount(1);
+  await expect(coffeeImage).toHaveAttribute('src', /assets\/table\/coffee\.png/);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('shithead-drink-Oliver'))).toBe('coffee');
 });
 
