@@ -1,6 +1,6 @@
 // Single visible build identifier for browser testing.
 // Increment this on every deployed change so testers can verify the live files.
-window.SHITHEAD_BUILD = "0.9.27";
+window.SHITHEAD_BUILD = "0.9.28";
 
 (() => {
   const host = document.querySelector('.topbar > div:first-child');
@@ -9,7 +9,7 @@ window.SHITHEAD_BUILD = "0.9.27";
   const badge = document.createElement('span');
   badge.id = 'buildBadge';
   badge.textContent = `Build ${window.SHITHEAD_BUILD}`;
-  badge.setAttribute('aria-label', `Shit Head build ${window.SHITHEAD_BUILD}`);
+  badge.setAttribute('aria-label', `S**t Head build ${window.SHITHEAD_BUILD}`);
   badge.style.cssText = [
     'display:inline-block',
     'margin-top:4px',
@@ -31,6 +31,7 @@ window.SHITHEAD_BUILD = "0.9.27";
     'table-atlas-runtime-0922.css',
     'mobile-drinks-0925.css',
     'drink-centering-0927.css',
+    'desktop-visual-0928.css',
   ].forEach((href) => {
     const css = document.createElement('link');
     css.rel = 'stylesheet';
