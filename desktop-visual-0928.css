@@ -1,0 +1,26 @@
+/* Build 0.9.28: desktop-only table proportion and clearance polish. */
+@media (min-width: 701px) {
+  .self-beer-mat { --seat-drink-scale: 1.24; }
+
+  .player-snack-bowl {
+    width: 150px;
+    right: -6%;
+    bottom: 18%;
+  }
+
+  .seat-left .player-notepad { top: -120px !important; }
+  .seat-right .player-notepad { top: -120px !important; }
+}
+
+@media (max-height: 760px) and (min-width: 701px) {
+  .player-snack-bowl {
+    width: 120px;
+    right: -3%;
+    bottom: 18%;
+  }
+
+  .seat-left .player-notepad,
+  .seat-right .player-notepad {
+    top: -92px !important;
+  }
+}
