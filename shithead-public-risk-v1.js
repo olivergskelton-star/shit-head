@@ -28,7 +28,7 @@
     pickupBase: 8,
     pickupLogWeight: 5,
     futureTurnWeights: Object.freeze([1, 0.3, 0.1]),
-    rolloutSamples: 256,
+    rolloutSamples: 128,
     maxRolloutActions: 700,
   });
 
