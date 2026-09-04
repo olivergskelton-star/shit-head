@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "test:functional": "playwright test tests/functional/*.spec.js",
-    "test:risk": "node tests/risk-phase-backtest.js"
+    "test:risk": "node tests/risk-endgame-regression.js && node tests/risk-rollout-regression.js && node tests/risk-phase-backtest.js"
   },
   "devDependencies": {
     "@playwright/test": "1.55.0"
