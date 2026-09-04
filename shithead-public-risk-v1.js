@@ -1,4 +1,4 @@
-// Shithead public risk v1.2
+// Shithead public risk v1.3
 //
 // Public-table risk uses a belief state over genuinely unseen cards. It NEVER reads
 // hidden hand identities, face-down identities or draw-pile identities. Cards that
@@ -28,7 +28,13 @@
     pickupBase: 8,
     pickupLogWeight: 5,
     futureTurnWeights: Object.freeze([1, 0.3, 0.1]),
+    rolloutSamples: 256,
+    maxRolloutActions: 700,
   });
+
+  const NORMAL_ORDER = ['4', '5', '6', '7', '8', '9', 'J', 'Q', 'K', 'A'];
+  const ROLLOUT_CACHE = new Map();
+  const MAX_CACHE_ENTRIES = 32;
 
   function tableSlotsFor(player) {
     if (!player) return [];
@@ -382,7 +388,7 @@
     }));
   }
 
-  function calculatePublicShitheadProbability(gameState, options) {
+  function calculateHeuristicShitheadProbability(gameState, options) {
     const config = mergeConfig(options);
     const details = calculatePublicRiskDetails(gameState, config);
     const ids = Object.keys(details);
@@ -396,10 +402,464 @@
     return Object.fromEntries(ids.map((id) => [id, active.includes(id) ? (raw[id] / denominator) * 100 : 0]));
   }
 
+  function rankOf(card) {
+    return card && typeof card.rank === 'string' ? card.rank : null;
+  }
+
+  function publicStateSignature(gameState) {
+    const ids = Object.keys(gameState?.players || {});
+    const burnCounts = Object.fromEntries(RANKS.map((rank) => [rank, 0]));
+    (gameState?.burnPile || []).forEach((card) => {
+      const rank = rankOf(card);
+      if (rank) burnCounts[rank] += 1;
+    });
+    const parts = [
+      'rollout-v1',
+      gameState?.phase || '-',
+      gameState?.currentPlayer || '-',
+      gameState?.followUpRank || '-',
+      String(gameState?.drawPile?.length || 0),
+      (gameState?.discard || []).map((card) => rankOf(card) || '-').join(','),
+      RANKS.map((rank) => burnCounts[rank]).join(','),
+    ];
+    ids.forEach((id) => {
+      const player = gameState.players[id];
+      const slots = tableSlotsFor(player);
+      parts.push(
+        id,
+        String(player?.hand?.length || 0),
+        knownHandFor(player).map((card) => card.rank).sort().join(','),
+        slots.map((slot) => `${rankOf(slot.faceUp) || '-'}:${slot.hasFaceDown ? 1 : 0}`).join(','),
+      );
+    });
+    return parts.join('~');
+  }
+
+  function hashString(value) {
+    let hash = 0x811C9DC5;
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 0x01000193);
+    }
+    return hash >>> 0;
+  }
+
+  function samplingSeedSignature(gameState) {
+    const remaining = belief.remainingRankCounts(gameState);
+    const ids = Object.keys(gameState?.players || {});
+    return [
+      'unseen-world-v1',
+      RANKS.map((rank) => remaining[rank] || 0).join(','),
+      String(gameState?.drawPile?.length || 0),
+      ...ids.flatMap((id) => {
+        const player = gameState.players[id];
+        return [
+          id,
+          String(unknownHandCount(player)),
+          tableSlotsFor(player).map((slot) => slot.hasFaceDown ? '1' : '0').join(''),
+        ];
+      }),
+    ].join('~');
+  }
+
+  function makeRng(seed) {
+    let state = (Number(seed) || 1) >>> 0;
+    return function random() {
+      state += 0x6D2B79F5;
+      let value = state;
+      value = Math.imul(value ^ (value >>> 15), value | 1);
+      value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+      return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function shuffleInPlace(items, random) {
+    for (let index = items.length - 1; index > 0; index -= 1) {
+      const other = Math.floor(random() * (index + 1));
+      [items[index], items[other]] = [items[other], items[index]];
+    }
+    return items;
+  }
+
+  function instantiatePublicState(gameState, random) {
+    const ids = Object.keys(gameState?.players || {});
+    const remaining = belief.remainingRankCounts(gameState);
+    const unseen = RANKS.flatMap((rank) => Array.from({ length: remaining[rank] || 0 }, () => rank));
+    const hiddenSlots = (gameState?.drawPile?.length || 0) + ids.reduce((sum, id) => {
+      const player = gameState.players[id];
+      return sum + unknownHandCount(player) + tableSlotsFor(player).filter((slot) => slot.hasFaceDown).length;
+    }, 0);
+    if (hiddenSlots !== unseen.length) return null;
+
+    shuffleInPlace(unseen, random);
+    const take = () => unseen.pop();
+    const players = Object.fromEntries(ids.map((id) => {
+      const source = gameState.players[id];
+      const hand = knownHandFor(source).map((card) => card.rank);
+      for (let index = 0; index < unknownHandCount(source); index += 1) hand.push(take());
+      const tableSlots = tableSlotsFor(source).map((slot) => ({
+        faceUp: rankOf(slot.faceUp),
+        faceDown: slot.hasFaceDown ? take() : null,
+      }));
+      return [id, { hand, tableSlots }];
+    }));
+    const drawPile = [];
+    for (let index = 0; index < (gameState?.drawPile?.length || 0); index += 1) drawPile.push(take());
+    if (unseen.length) return null;
+
+    return {
+      ids,
+      phase: gameState?.phase || 'play',
+      currentPlayer: gameState?.currentPlayer || ids[0] || null,
+      followUpRank: gameState?.followUpRank || null,
+      drawPile,
+      discard: (gameState?.discard || []).map(rankOf).filter(Boolean),
+      players,
+      loser: gameState?.shitHead || null,
+    };
+  }
+
+  function rolloutPlayerOut(state, id) {
+    const player = state.players[id];
+    return !player || (player.hand.length === 0 && !player.tableSlots.some((slot) => slot.faceUp || slot.faceDown));
+  }
+
+  function rolloutLiving(state) {
+    return state.ids.filter((id) => !rolloutPlayerOut(state, id));
+  }
+
+  function rolloutConclude(state) {
+    const living = rolloutLiving(state);
+    if (living.length > 1) return false;
+    state.phase = 'gameover';
+    state.loser = living[0] || null;
+    state.currentPlayer = state.loser;
+    state.followUpRank = null;
+    return true;
+  }
+
+  function rolloutAdvance(state, fromId) {
+    if (rolloutConclude(state)) return;
+    const start = Math.max(0, state.ids.indexOf(fromId));
+    for (let offset = 1; offset <= state.ids.length; offset += 1) {
+      const candidate = state.ids[(start + offset) % state.ids.length];
+      if (!rolloutPlayerOut(state, candidate)) {
+        state.currentPlayer = candidate;
+        return;
+      }
+    }
+  }
+
+  function rolloutEffectiveTop(state) {
+    for (let index = state.discard.length - 1; index >= 0; index -= 1) {
+      if (state.discard[index] !== '3') return state.discard[index];
+    }
+    return null;
+  }
+
+  function rolloutCanPlay(state, rank) {
+    if (state.followUpRank && rank !== state.followUpRank) return false;
+    if (rank === '2' || rank === '3' || rank === '10') return true;
+    const target = rolloutEffectiveTop(state);
+    if (!target || target === '2') return true;
+    const candidateValue = NORMAL_ORDER.indexOf(rank);
+    if (target === '7') return candidateValue !== -1 && candidateValue <= NORMAL_ORDER.indexOf('7');
+    const targetValue = NORMAL_ORDER.indexOf(target);
+    return candidateValue !== -1 && targetValue !== -1 && candidateValue >= targetValue;
+  }
+
+  function rolloutTopCount(state, rank) {
+    let count = 0;
+    for (let index = state.discard.length - 1; index >= 0; index -= 1) {
+      if (state.discard[index] !== rank) break;
+      count += 1;
+    }
+    return count;
+  }
+
+  function rolloutShouldBurn(state, rank) {
+    if (rank === '10') return true;
+    const count = rolloutTopCount(state, rank);
+    return rank === '8' ? count >= 3 : count >= 4;
+  }
+
+  function rolloutRefill(state, player) {
+    while (player.hand.length < 3 && state.drawPile.length) player.hand.push(state.drawPile.pop());
+  }
+
+  function rolloutHasFollowUp(state, id, rank) {
+    const player = state.players[id];
+    if (rolloutPlayerOut(state, id)) return false;
+    if (player.hand.includes(rank)) return true;
+    return state.drawPile.length === 0 && player.hand.length === 0
+      && player.tableSlots.some((slot) => slot.faceUp === rank);
+  }
+
+  function rolloutPlay(state, id, rank) {
+    const player = state.players[id];
+    const useHand = player.hand.length > 0 || state.drawPile.length > 0;
+    let played = 0;
+    if (useHand) {
+      const before = player.hand.length;
+      player.hand = player.hand.filter((cardRank) => cardRank !== rank);
+      played = before - player.hand.length;
+      // The real game permits a final same-rank hand to be laid with matching face-up cards.
+      if (!state.drawPile.length && player.hand.length === 0) {
+        player.tableSlots.forEach((slot) => {
+          if (slot.faceUp === rank) {
+            slot.faceUp = null;
+            played += 1;
+          }
+        });
+      }
+    } else {
+      player.tableSlots.forEach((slot) => {
+        if (slot.faceUp === rank) {
+          slot.faceUp = null;
+          played += 1;
+        }
+      });
+    }
+    if (!played) return false;
+
+    for (let index = 0; index < played; index += 1) state.discard.push(rank);
+    rolloutRefill(state, player);
+    const burned = rolloutShouldBurn(state, rank);
+    const becameOut = rolloutPlayerOut(state, id);
+    if (burned) {
+      state.discard = [];
+      state.followUpRank = null;
+      if (becameOut) rolloutAdvance(state, id);
+      else rolloutConclude(state);
+      return true;
+    }
+    if (becameOut) {
+      state.followUpRank = null;
+      rolloutAdvance(state, id);
+    } else if (rolloutHasFollowUp(state, id, rank)) {
+      state.followUpRank = rank;
+    } else {
+      state.followUpRank = null;
+      rolloutAdvance(state, id);
+    }
+    return true;
+  }
+
+  function rolloutBlind(state, id, slotIndex) {
+    const player = state.players[id];
+    const slot = player.tableSlots[slotIndex];
+    const rank = slot.faceDown;
+    slot.faceDown = null;
+    state.followUpRank = null;
+    if (!rolloutCanPlay(state, rank)) {
+      player.hand.push(...state.discard, rank);
+      state.discard = [];
+      rolloutAdvance(state, id);
+      return true;
+    }
+    state.discard.push(rank);
+    const burned = rolloutShouldBurn(state, rank);
+    const becameOut = rolloutPlayerOut(state, id);
+    if (burned) {
+      state.discard = [];
+      if (becameOut) rolloutAdvance(state, id);
+      else rolloutConclude(state);
+    } else if (becameOut) {
+      rolloutAdvance(state, id);
+    } else {
+      rolloutAdvance(state, id);
+    }
+    return true;
+  }
+
+  function rolloutPickup(state, id) {
+    state.players[id].hand.push(...state.discard);
+    state.discard = [];
+    state.followUpRank = null;
+    rolloutAdvance(state, id);
+  }
+
+  function rankActionScore(state, player, rank, count) {
+    const existing = rolloutTopCount(state, rank);
+    const burns = rank === '10' || (rank === '8' ? existing + count >= 3 : existing + count >= 4);
+    const cardsBefore = player.hand.length + player.tableSlots.filter((slot) => slot.faceUp || slot.faceDown).length;
+    const drawsAfter = Math.min(Math.max(0, 3 - (player.hand.length - count)), state.drawPile.length);
+    const playsOut = cardsBefore - count + drawsAfter === 0;
+    return (playsOut ? 1000 : 0) + (burns ? 90 : 0) + count * 18 - (BASE_UTILITY[rank] || 0) * 2;
+  }
+
+  function rolloutChooseAndPlay(state, id, random) {
+    const player = state.players[id];
+    if (state.followUpRank) {
+      const rank = state.followUpRank;
+      const available = player.hand.filter((item) => item === rank).length
+        || (state.drawPile.length === 0 && player.hand.length === 0
+          ? player.tableSlots.filter((slot) => slot.faceUp === rank).length
+          : 0);
+      if (available && rolloutCanPlay(state, rank)) return rolloutPlay(state, id, rank);
+      state.followUpRank = null;
+      rolloutAdvance(state, id);
+      return true;
+    }
+
+    if (player.hand.length > 0 || state.drawPile.length > 0) {
+      const counts = {};
+      player.hand.forEach((rank) => { counts[rank] = (counts[rank] || 0) + 1; });
+      const legal = Object.keys(counts).filter((rank) => rolloutCanPlay(state, rank));
+      if (legal.length) {
+        legal.sort((left, right) => {
+          const score = rankActionScore(state, player, right, counts[right]) - rankActionScore(state, player, left, counts[left]);
+          return score || RANKS.indexOf(left) - RANKS.indexOf(right);
+        });
+        return rolloutPlay(state, id, legal[0]);
+      }
+      if (state.discard.length) {
+        rolloutPickup(state, id);
+        return true;
+      }
+      return false;
+    }
+
+    const faceCounts = {};
+    player.tableSlots.forEach((slot) => {
+      if (slot.faceUp) faceCounts[slot.faceUp] = (faceCounts[slot.faceUp] || 0) + 1;
+    });
+    const legalFaceUp = Object.keys(faceCounts).filter((rank) => rolloutCanPlay(state, rank));
+    if (legalFaceUp.length) {
+      legalFaceUp.sort((left, right) => {
+        const score = rankActionScore(state, player, right, faceCounts[right]) - rankActionScore(state, player, left, faceCounts[left]);
+        return score || RANKS.indexOf(left) - RANKS.indexOf(right);
+      });
+      return rolloutPlay(state, id, legalFaceUp[0]);
+    }
+    if (Object.keys(faceCounts).length && state.discard.length) {
+      rolloutPickup(state, id);
+      return true;
+    }
+
+    const blindSlots = player.tableSlots
+      .map((slot, index) => ({ slot, index }))
+      .filter(({ slot }) => slot.faceDown && !slot.faceUp);
+    if (blindSlots.length) {
+      const chosen = blindSlots[Math.floor(random() * blindSlots.length)];
+      return rolloutBlind(state, id, chosen.index);
+    }
+    return false;
+  }
+
+  function fallbackRolloutLoser(state, random) {
+    const living = rolloutLiving(state);
+    if (!living.length) return null;
+    const scores = living.map((id) => {
+      const player = state.players[id];
+      return {
+        id,
+        score: player.hand.length * 3
+          + player.tableSlots.filter((slot) => slot.faceUp).length * 4
+          + player.tableSlots.filter((slot) => slot.faceDown).length * 5,
+      };
+    });
+    const max = Math.max(...scores.map((item) => item.score));
+    const tied = scores.filter((item) => item.score === max);
+    return tied[Math.floor(random() * tied.length)].id;
+  }
+
+  function rolloutPositionSignature(state) {
+    const parts = [
+      state.currentPlayer || '-',
+      state.followUpRank || '-',
+      state.drawPile.join(','),
+      state.discard.join(','),
+    ];
+    state.ids.forEach((id) => {
+      const player = state.players[id];
+      parts.push(
+        id,
+        [...player.hand].sort().join(','),
+        player.tableSlots.map((slot) => `${slot.faceUp || '-'}:${slot.faceDown || '-'}`).join(','),
+      );
+    });
+    return parts.join('~');
+  }
+
+  function runPublicRollout(gameState, seed, maxActions) {
+    const random = makeRng(seed);
+    const state = instantiatePublicState(gameState, random);
+    if (!state) return null;
+    if (state.phase === 'gameover') return state.loser;
+    rolloutConclude(state);
+    const seen = new Map();
+    let actions = 0;
+    while (state.phase === 'play' && actions < maxActions) {
+      const signature = rolloutPositionSignature(state);
+      const visits = (seen.get(signature) || 0) + 1;
+      seen.set(signature, visits);
+      if (visits >= 3) return fallbackRolloutLoser(state, random);
+      const id = state.currentPlayer;
+      if (!id || rolloutPlayerOut(state, id) || !rolloutChooseAndPlay(state, id, random)) break;
+      actions += 1;
+    }
+    return state.phase === 'gameover' ? state.loser : fallbackRolloutLoser(state, random);
+  }
+
+  function calculateRolloutShitheadProbability(gameState, options) {
+    const config = mergeConfig(options);
+    const ids = Object.keys(gameState?.players || {});
+    if (!ids.length) return {};
+    if (gameState?.phase === 'gameover' && gameState?.shitHead) {
+      return Object.fromEntries(ids.map((id) => [id, id === gameState.shitHead ? 100 : 0]));
+    }
+
+    const details = calculatePublicRiskDetails(gameState, config);
+    const guaranteedSafe = new Set(ids.filter((id) => details[id]?.guaranteedSafe));
+    const eligible = ids.filter((id) => !details[id]?.out && !guaranteedSafe.has(id));
+    if (!eligible.length) return Object.fromEntries(ids.map((id) => [id, 0]));
+    if (eligible.length === 1) return Object.fromEntries(ids.map((id) => [id, id === eligible[0] ? 100 : 0]));
+
+    const samples = Math.max(32, Math.min(2048, Math.round(Number(config.rolloutSamples) || DEFAULTS.rolloutSamples)));
+    const maxActions = Math.max(100, Math.min(2500, Math.round(Number(config.maxRolloutActions) || DEFAULTS.maxRolloutActions)));
+    const signature = publicStateSignature(gameState);
+    const cacheKey = `${signature}~${samples}~${maxActions}`;
+    if (ROLLOUT_CACHE.has(cacheKey)) return { ...ROLLOUT_CACHE.get(cacheKey) };
+
+    const counts = Object.fromEntries(ids.map((id) => [id, 0]));
+    // Positions with the same unknown-card pool and hidden-zone layout sample the
+    // same possible worlds. This removes Monte Carlo wobble across a public move.
+    const baseSeed = hashString(samplingSeedSignature(gameState));
+    let completed = 0;
+    for (let index = 0; index < samples; index += 1) {
+      const seed = (baseSeed + Math.imul(index + 1, 0x9E3779B9)) >>> 0;
+      const loser = runPublicRollout(gameState, seed, maxActions);
+      if (loser && eligible.includes(loser)) {
+        counts[loser] += 1;
+        completed += 1;
+      }
+    }
+    if (!completed) return null;
+    // Jeffreys smoothing prevents a merely unobserved loss from being displayed as
+    // impossible. Publicly proven exits above remain the only exact zeroes.
+    const prior = 0.5;
+    const denominator = completed + prior * eligible.length;
+    const probabilities = Object.fromEntries(ids.map((id) => [
+      id,
+      eligible.includes(id) ? ((counts[id] + prior) / denominator) * 100 : 0,
+    ]));
+    ROLLOUT_CACHE.set(cacheKey, probabilities);
+    if (ROLLOUT_CACHE.size > MAX_CACHE_ENTRIES) ROLLOUT_CACHE.delete(ROLLOUT_CACHE.keys().next().value);
+    return { ...probabilities };
+  }
+
+  function calculatePublicShitheadProbability(gameState, options) {
+    return calculateRolloutShitheadProbability(gameState, options)
+      || calculateHeuristicShitheadProbability(gameState, options);
+  }
+
   return Object.freeze({
-    version: 'public-belief-v1.2',
+    version: 'public-belief-v1.3',
     DEFAULTS,
     calculatePublicRiskDetails,
+    calculateHeuristicShitheadProbability,
+    calculateRolloutShitheadProbability,
     calculatePublicShitheadProbability,
   });
 });
