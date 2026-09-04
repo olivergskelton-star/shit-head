@@ -1,4 +1,4 @@
-// Shithead public risk v1.1
+// Shithead public risk v1.2
 //
 // Public-table risk uses a belief state over genuinely unseen cards. It NEVER reads
 // hidden hand identities, face-down identities or draw-pile identities. Cards that
@@ -254,6 +254,52 @@
     return tableSlotsFor(player).filter((slot) => slot.hasFaceDown && !slot.faceUp).length;
   }
 
+  function playWouldBurn(rank, playedCount, gameState) {
+    if (rank === '10') return true;
+    const run = topRun(gameState?.discard);
+    const existing = run.rank === rank ? run.count : 0;
+    const combined = existing + Math.max(0, Number(playedCount) || 0);
+    return rank === '8' ? combined >= 3 : combined >= 4;
+  }
+
+  // Resolve public, deterministic exits before applying the heuristic model.
+  // This only follows visible face-up cards and the fact that any single blind
+  // card is playable on an empty pile; it never inspects a hidden identity.
+  function hasForcedPublicExit(id, player, gameState) {
+    if (gameState?.phase !== 'play' || gameState?.currentPlayer !== id) return false;
+    if ((gameState?.drawPile?.length || 0) > 0 || (player?.hand?.length || 0) > 0) return false;
+
+    const slots = tableSlotsFor(player);
+    const faceUps = slots.map((slot) => slot.faceUp).filter(Boolean);
+    const blindCount = slots.filter((slot) => slot.hasFaceDown).length;
+
+    function canExit(remainingFaceUps, discard, followUpRank) {
+      if (!remainingFaceUps.length) {
+        if (!blindCount) return true;
+        // The rank is immaterial: with no discard, the last blind card must play.
+        return blindCount === 1 && discard.length === 0 && !followUpRank;
+      }
+
+      const ranks = [...new Set(remainingFaceUps.map((card) => card.rank).filter(Boolean))];
+      return ranks.some((rank) => {
+        const localState = { ...gameState, discard, followUpRank };
+        if (!baseRisk.canPlayRank(rank, localState)) return false;
+
+        const played = remainingFaceUps.filter((card) => card.rank === rank);
+        const left = remainingFaceUps.filter((card) => card.rank !== rank);
+
+        if (playWouldBurn(rank, played.length, localState)) {
+          return canExit(left, [], null);
+        }
+
+        // A non-burning play only guarantees safety when it plays the player out.
+        return left.length === 0 && blindCount === 0;
+      });
+    }
+
+    return canExit(faceUps, Array.isArray(gameState?.discard) ? gameState.discard : [], gameState?.followUpRank || null);
+  }
+
   function noLegalProbability(player, gameState) {
     const c = countsFor(player);
     if (!c.total || !(gameState?.discard?.length || 0)) return 0;
@@ -293,6 +339,7 @@
     if (gameState?.phase === 'gameover' && gameState?.shitHead) {
       return Object.fromEntries(ids.map((id) => [id, {
         out: id !== gameState.shitHead,
+        guaranteedSafe: false,
         riskScore: id === gameState.shitHead ? 100 : -Infinity,
         components: { burden: 0, cardQuality: 0, tableTrap: 0, pickupDanger: 0, comboStrength: 0 },
       }]));
@@ -304,6 +351,7 @@
       if (!c.total) {
         return [id, {
           out: true,
+          guaranteedSafe: false,
           riskScore: -Infinity,
           components: { burden: 0, cardQuality: 0, tableTrap: 0, pickupDanger: 0, comboStrength: 0 },
         }];
@@ -321,6 +369,7 @@
 
       return [id, {
         out: false,
+        guaranteedSafe: hasForcedPublicExit(id, player, gameState),
         riskScore,
         components: {
           burden,
@@ -337,7 +386,7 @@
     const config = mergeConfig(options);
     const details = calculatePublicRiskDetails(gameState, config);
     const ids = Object.keys(details);
-    const active = ids.filter((id) => Number.isFinite(details[id].riskScore));
+    const active = ids.filter((id) => Number.isFinite(details[id].riskScore) && !details[id].guaranteedSafe);
     if (!active.length) return Object.fromEntries(ids.map((id) => [id, 0]));
     if (active.length === 1) return Object.fromEntries(ids.map((id) => [id, id === active[0] ? 100 : 0]));
 
@@ -348,7 +397,7 @@
   }
 
   return Object.freeze({
-    version: 'public-belief-v1.1',
+    version: 'public-belief-v1.2',
     DEFAULTS,
     calculatePublicRiskDetails,
     calculatePublicShitheadProbability,
