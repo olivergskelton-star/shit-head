@@ -32,7 +32,7 @@ function assertPublic(snapshot) {
 }
 
 function activeFromDetails(details) {
-  return PLAYERS.filter((name) => Number.isFinite(details[name]?.riskScore));
+  return PLAYERS.filter((name) => Number.isFinite(details[name]?.riskScore) && !details[name]?.guaranteedSafe);
 }
 
 function equalOddsFromDetails(details) {
