@@ -1,11 +1,11 @@
 const fs = require('node:fs');
 const { test, expect } = require('@playwright/test');
 
-test('desktop branding, foreground drink, snack and opponent notes match Build 0.9.30', async ({ page }) => {
+test('desktop branding, foreground drink, snack and opponent notes match Build 0.9.31', async ({ page }) => {
   await page.setViewportSize({ width: 1150, height: 900 });
   await page.goto('/index.html');
   await page.waitForFunction(() => (
-    window.SHITHEAD_BUILD === '0.9.30'
+    window.SHITHEAD_BUILD === '0.9.31'
     && document.documentElement.dataset.tableAssets === 'ready'
     && document.querySelectorAll('.player-notepad').length === 3
   ));
