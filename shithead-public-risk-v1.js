@@ -1,8 +1,8 @@
-// Shithead public risk v1.3
+// Shithead viewer-aware risk v1.4
 //
-// Public-table risk uses a belief state over genuinely unseen cards. It NEVER reads
-// hidden hand identities, face-down identities or draw-pile identities. Cards that
-// everyone has already seen enter a hand remain public knowledge via player.knownHand.
+// Risk uses the current viewer's hand plus a belief state over genuinely unseen
+// cards. It NEVER reads an opponent's hidden hand, any face-down identity or a
+// draw-pile identity. Public pickups remain known via player.knownHand.
 (function initPublicRiskV1(root, factory) {
   const belief = typeof module !== 'undefined' && module.exports
     ? require('./shithead-belief-state-v1.js')
@@ -30,6 +30,9 @@
     futureTurnWeights: Object.freeze([1, 0.3, 0.1]),
     rolloutSamples: 128,
     maxRolloutActions: 700,
+    burdenBlend: 0.35,
+    burdenTemperature: 2.5,
+    burdenZoneWeights: Object.freeze({ hand: 1, faceUp: 1.15, faceDown: 1.35 }),
   });
 
   const NORMAL_ORDER = ['4', '5', '6', '7', '8', '9', 'J', 'Q', 'K', 'A'];
@@ -114,6 +117,7 @@
       futureTurnWeights: Array.isArray(input.futureTurnWeights)
         ? input.futureTurnWeights
         : DEFAULTS.futureTurnWeights,
+      burdenZoneWeights: { ...DEFAULTS.burdenZoneWeights, ...(input.burdenZoneWeights || {}) },
     };
   }
 
@@ -406,7 +410,40 @@
     return card && typeof card.rank === 'string' ? card.rank : null;
   }
 
-  function publicStateSignature(gameState) {
+  function completeViewerHandRanks(gameState, viewerId) {
+    const hand = gameState?.players?.[viewerId]?.hand;
+    if (!viewerId || !Array.isArray(hand) || !hand.every((card) => !!rankOf(card))) return null;
+    return hand.map(rankOf);
+  }
+
+  function fixedHandRanks(gameState, id, viewerId) {
+    const viewerRanks = id === viewerId ? completeViewerHandRanks(gameState, viewerId) : null;
+    return viewerRanks || knownHandFor(gameState?.players?.[id]).map((card) => card.rank);
+  }
+
+  function hiddenHandCountFor(gameState, id, viewerId) {
+    const player = gameState?.players?.[id];
+    return Math.max(0, (player?.hand?.length || 0) - fixedHandRanks(gameState, id, viewerId).length);
+  }
+
+  function viewerRemainingRankCounts(gameState, viewerId) {
+    const remaining = belief.remainingRankCounts(gameState);
+    const viewerRanks = completeViewerHandRanks(gameState, viewerId);
+    if (!viewerRanks) return remaining;
+
+    const actual = Object.fromEntries(RANKS.map((rank) => [rank, 0]));
+    const alreadyPublic = Object.fromEntries(RANKS.map((rank) => [rank, 0]));
+    viewerRanks.forEach((rank) => { if (actual[rank] !== undefined) actual[rank] += 1; });
+    knownHandFor(gameState.players[viewerId]).forEach((card) => {
+      if (alreadyPublic[card.rank] !== undefined) alreadyPublic[card.rank] += 1;
+    });
+    return Object.fromEntries(RANKS.map((rank) => [
+      rank,
+      Math.max(0, remaining[rank] - Math.max(0, actual[rank] - alreadyPublic[rank])),
+    ]));
+  }
+
+  function publicStateSignature(gameState, viewerId) {
     const ids = Object.keys(gameState?.players || {});
     const burnCounts = Object.fromEntries(RANKS.map((rank) => [rank, 0]));
     (gameState?.burnPile || []).forEach((card) => {
@@ -414,7 +451,8 @@
       if (rank) burnCounts[rank] += 1;
     });
     const parts = [
-      'rollout-v1',
+      'rollout-v2',
+      viewerId || '-',
       gameState?.phase || '-',
       gameState?.currentPlayer || '-',
       gameState?.followUpRank || '-',
@@ -432,6 +470,8 @@
         slots.map((slot) => `${rankOf(slot.faceUp) || '-'}:${slot.hasFaceDown ? 1 : 0}`).join(','),
       );
     });
+    const viewerRanks = completeViewerHandRanks(gameState, viewerId);
+    if (viewerRanks) parts.push('viewer-hand', [...viewerRanks].sort().join(','));
     return parts.join('~');
   }
 
@@ -444,18 +484,19 @@
     return hash >>> 0;
   }
 
-  function samplingSeedSignature(gameState) {
-    const remaining = belief.remainingRankCounts(gameState);
+  function samplingSeedSignature(gameState, viewerId) {
+    const remaining = viewerRemainingRankCounts(gameState, viewerId);
     const ids = Object.keys(gameState?.players || {});
     return [
-      'unseen-world-v1',
+      'unseen-world-v2',
+      viewerId || '-',
       RANKS.map((rank) => remaining[rank] || 0).join(','),
       String(gameState?.drawPile?.length || 0),
       ...ids.flatMap((id) => {
         const player = gameState.players[id];
         return [
           id,
-          String(unknownHandCount(player)),
+          String(hiddenHandCountFor(gameState, id, viewerId)),
           tableSlotsFor(player).map((slot) => slot.hasFaceDown ? '1' : '0').join(''),
         ];
       }),
@@ -481,13 +522,13 @@
     return items;
   }
 
-  function instantiatePublicState(gameState, random) {
+  function instantiatePublicState(gameState, random, viewerId) {
     const ids = Object.keys(gameState?.players || {});
-    const remaining = belief.remainingRankCounts(gameState);
+    const remaining = viewerRemainingRankCounts(gameState, viewerId);
     const unseen = RANKS.flatMap((rank) => Array.from({ length: remaining[rank] || 0 }, () => rank));
     const hiddenSlots = (gameState?.drawPile?.length || 0) + ids.reduce((sum, id) => {
       const player = gameState.players[id];
-      return sum + unknownHandCount(player) + tableSlotsFor(player).filter((slot) => slot.hasFaceDown).length;
+      return sum + hiddenHandCountFor(gameState, id, viewerId) + tableSlotsFor(player).filter((slot) => slot.hasFaceDown).length;
     }, 0);
     if (hiddenSlots !== unseen.length) return null;
 
@@ -495,8 +536,8 @@
     const take = () => unseen.pop();
     const players = Object.fromEntries(ids.map((id) => {
       const source = gameState.players[id];
-      const hand = knownHandFor(source).map((card) => card.rank);
-      for (let index = 0; index < unknownHandCount(source); index += 1) hand.push(take());
+      const hand = fixedHandRanks(gameState, id, viewerId);
+      for (let index = 0; index < hiddenHandCountFor(gameState, id, viewerId); index += 1) hand.push(take());
       const tableSlots = tableSlotsFor(source).map((slot) => ({
         faceUp: rankOf(slot.faceUp),
         faceDown: slot.hasFaceDown ? take() : null,
@@ -782,9 +823,9 @@
     return parts.join('~');
   }
 
-  function runPublicRollout(gameState, seed, maxActions) {
+  function runPublicRollout(gameState, seed, maxActions, viewerId) {
     const random = makeRng(seed);
-    const state = instantiatePublicState(gameState, random);
+    const state = instantiatePublicState(gameState, random, viewerId);
     if (!state) return null;
     if (state.phase === 'gameover') return state.loser;
     rolloutConclude(state);
@@ -802,9 +843,27 @@
     return state.phase === 'gameover' ? state.loser : fallbackRolloutLoser(state, random);
   }
 
+  function burdenPriorProbability(gameState, ids, eligible, config) {
+    const weights = config.burdenZoneWeights;
+    const scores = Object.fromEntries(eligible.map((id) => {
+      const counts = countsFor(gameState.players[id]);
+      return [id,
+        counts.hand * weights.hand
+        + counts.faceUp * weights.faceUp
+        + counts.faceDown * weights.faceDown,
+      ];
+    }));
+    const temperature = Math.max(0.5, Number(config.burdenTemperature) || DEFAULTS.burdenTemperature);
+    const maxScore = Math.max(...eligible.map((id) => scores[id]));
+    const raw = Object.fromEntries(eligible.map((id) => [id, Math.exp((scores[id] - maxScore) / temperature)]));
+    const denominator = eligible.reduce((sum, id) => sum + raw[id], 0) || 1;
+    return Object.fromEntries(ids.map((id) => [id, eligible.includes(id) ? (raw[id] / denominator) * 100 : 0]));
+  }
+
   function calculateRolloutShitheadProbability(gameState, options) {
     const config = mergeConfig(options);
     const ids = Object.keys(gameState?.players || {});
+    const viewerId = ids.includes(config.viewerId) ? config.viewerId : null;
     if (!ids.length) return {};
     if (gameState?.phase === 'gameover' && gameState?.shitHead) {
       return Object.fromEntries(ids.map((id) => [id, id === gameState.shitHead ? 100 : 0]));
@@ -818,18 +877,20 @@
 
     const samples = Math.max(32, Math.min(2048, Math.round(Number(config.rolloutSamples) || DEFAULTS.rolloutSamples)));
     const maxActions = Math.max(100, Math.min(2500, Math.round(Number(config.maxRolloutActions) || DEFAULTS.maxRolloutActions)));
-    const signature = publicStateSignature(gameState);
-    const cacheKey = `${signature}~${samples}~${maxActions}`;
+    const signature = publicStateSignature(gameState, viewerId);
+    const blend = Math.max(0, Math.min(0.8, Number(config.burdenBlend) || 0));
+    const burdenKey = ['hand', 'faceUp', 'faceDown'].map((zone) => config.burdenZoneWeights[zone]).join(',');
+    const cacheKey = `${signature}~${samples}~${maxActions}~${blend}~${config.burdenTemperature}~${burdenKey}`;
     if (ROLLOUT_CACHE.has(cacheKey)) return { ...ROLLOUT_CACHE.get(cacheKey) };
 
     const counts = Object.fromEntries(ids.map((id) => [id, 0]));
     // Positions with the same unknown-card pool and hidden-zone layout sample the
     // same possible worlds. This removes Monte Carlo wobble across a public move.
-    const baseSeed = hashString(samplingSeedSignature(gameState));
+    const baseSeed = hashString(samplingSeedSignature(gameState, viewerId));
     let completed = 0;
     for (let index = 0; index < samples; index += 1) {
       const seed = (baseSeed + Math.imul(index + 1, 0x9E3779B9)) >>> 0;
-      const loser = runPublicRollout(gameState, seed, maxActions);
+      const loser = runPublicRollout(gameState, seed, maxActions, viewerId);
       if (loser && eligible.includes(loser)) {
         counts[loser] += 1;
         completed += 1;
@@ -840,9 +901,14 @@
     // impossible. Publicly proven exits above remain the only exact zeroes.
     const prior = 0.5;
     const denominator = completed + prior * eligible.length;
-    const probabilities = Object.fromEntries(ids.map((id) => [
+    const rolloutProbabilities = Object.fromEntries(ids.map((id) => [
       id,
       eligible.includes(id) ? ((counts[id] + prior) / denominator) * 100 : 0,
+    ]));
+    const burdenProbabilities = burdenPriorProbability(gameState, ids, eligible, config);
+    const probabilities = Object.fromEntries(ids.map((id) => [
+      id,
+      rolloutProbabilities[id] * (1 - blend) + burdenProbabilities[id] * blend,
     ]));
     ROLLOUT_CACHE.set(cacheKey, probabilities);
     if (ROLLOUT_CACHE.size > MAX_CACHE_ENTRIES) ROLLOUT_CACHE.delete(ROLLOUT_CACHE.keys().next().value);
@@ -855,7 +921,7 @@
   }
 
   return Object.freeze({
-    version: 'public-belief-v1.3',
+    version: 'viewer-belief-v1.4',
     DEFAULTS,
     calculatePublicRiskDetails,
     calculateHeuristicShitheadProbability,

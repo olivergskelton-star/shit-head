@@ -105,6 +105,7 @@
 
     try {
       return engine.calculatePublicShitheadProbability(state, {
+        viewerId: state.viewer,
         temperature,
         burden: CALIBRATION.burden,
         cardQualityWeight: CALIBRATION.cardQualityWeight,
