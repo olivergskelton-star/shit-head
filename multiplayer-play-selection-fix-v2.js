@@ -88,24 +88,30 @@
     const finish = actions?.querySelector('.finish-turn');
     if (!actions || !play) return;
 
+    const tablePickup = !!tablePlay()?.canPickupTableRefs?.(state.viewer, localRefs);
     const showPlay = localRefs.length > 0 || awaitingHost;
     actions.classList.toggle('visible', showPlay || otherTurnActionVisible(actions));
-    play.hidden = false;
-    play.disabled = awaitingHost || localRefs.length === 0;
+    play.hidden = tablePickup;
+    play.disabled = awaitingHost || localRefs.length === 0 || tablePickup;
     play.textContent = awaitingHost
       ? 'PLAYING…'
       : localRefs.length > 1
         ? `PLAY ${localRefs.length}`
         : 'PLAY';
 
-    if (pickup && awaitingHost) pickup.disabled = true;
+    if (pickup) {
+      pickup.textContent = tablePickup ? `PICK UP ${localRefs.length} + PILE` : 'PICK UP';
+      if (awaitingHost) pickup.disabled = true;
+    }
     if (finish && awaitingHost) finish.disabled = true;
 
     if (hint) {
       hint.hidden = false;
       hint.textContent = awaitingHost
         ? 'Waiting for host'
-        : localRefs.length > 1
+        : tablePickup
+          ? 'Selected table card(s) will join the central pile in your hand'
+          : localRefs.length > 1
           ? `${localRefs.length} matching cards selected`
           : 'Selected';
     }
@@ -135,20 +141,23 @@
     paintSelection();
   }
 
-  function doTurnAction(action) {
+  function doTurnAction(action, refs = []) {
     const role = onlineRole();
     clearLocalSelection();
 
     if (role === 'host') {
       if (action === 'pickup') pickupDiscard(state.viewer);
+      else if (action === 'table-pickup') tablePlay()?.pickupTableAndDiscard?.(state.viewer, refs);
       else if (action === 'finish') finishTurn(state.viewer);
       window.ShitHeadMultiplayer?.publishState?.();
       return;
     }
 
-    const sent = window.ShitHeadAuthoritativePlay?.sendTurnAction?.(state.viewer, action);
+    const sent = action === 'table-pickup'
+      ? window.ShitHeadAuthoritativePlay?.sendTablePickup?.(state.viewer, refs)
+      : window.ShitHeadAuthoritativePlay?.sendTurnAction?.(state.viewer, action);
     if (!sent) {
-      failSend(`Could not send ${action === 'pickup' ? 'PICK UP' : 'FINISH TURN'} to the host. Check the room connection.`);
+      failSend(`Could not send ${action === 'finish' ? 'FINISH TURN' : 'PICK UP'} to the host. Check the room connection.`);
       return;
     }
     awaitingHost = true;
@@ -168,7 +177,9 @@
     if (pickup && !pickup.disabled && !pickup.hidden) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      doTurnAction('pickup');
+      const refs = validLocalRefs().map((ref) => ({ zone: ref.zone, index: ref.index }));
+      const tablePickup = !!tablePlay()?.canPickupTableRefs?.(state.viewer, refs);
+      doTurnAction(tablePickup ? 'table-pickup' : 'pickup', refs);
       return;
     }
 

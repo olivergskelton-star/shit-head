@@ -42,6 +42,7 @@ async function canonicalSignature(page) {
     phase: state.phase,
     currentPlayer: state.currentPlayer,
     startingPlayer: state.startingPlayer,
+    playDirection: state.playDirection,
     drawCount: state.drawPile.length,
     discard: state.discard.map((card) => `${card.rank}${card.suit}`),
     burn: state.burnPile.map((card) => `${card.rank}${card.suit}`),
@@ -153,6 +154,21 @@ test('three real pages stay in sync through drinks, SORT, READY, PLAY and PICK U
   }
   await expectAllSynced(pages);
 
+  step('Dan swaps setup cards without publishing their identities');
+  const danSwap = await dan.evaluate(() => ({
+    hand: `${state.players.Dan.hand[0].rank}${state.players.Dan.hand[0].suit}`,
+    table: `${state.players.Dan.faceUp[0].rank}${state.players.Dan.faceUp[0].suit}`,
+  }));
+  await dan.locator('.hand button.card').first().click();
+  await dan.locator('.self-face-row .setup-table-card').first().click();
+  await expect.poll(() => oliver.evaluate(() => `${state.players.Dan.faceUp[0].rank}${state.players.Dan.faceUp[0].suit}`)).toBe(danSwap.hand);
+  const setupMessages = await Promise.all(pages.map((page) => page.evaluate(() => state.lastMessage)));
+  setupMessages.forEach((message) => {
+    expect(message).not.toContain(danSwap.hand);
+    expect(message).not.toContain(danSwap.table);
+    expect(message).not.toMatch(/swapped|selected/i);
+  });
+
   step('ready all three with third READY from client Chris');
   await oliver.locator('.setup-ready').click();
   await expect.poll(() => oliver.evaluate(() => state.setupReady.Oliver)).toBe(true);
@@ -169,8 +185,9 @@ test('three real pages stay in sync through drinks, SORT, READY, PLAY and PICK U
   step('sort Dan during Oliver turn');
   await forceCleanTurn(oliver, pages, 'Oliver');
   await dan.locator('.sort-hand').click();
-  const danSorted = await handSignature(dan, 'Dan');
-  await expect.poll(() => handSignature(oliver, 'Dan')).toEqual(danSorted);
+  await expect.poll(() => oliver.evaluate(() => state.lastMessage)).toMatch(/Dan sorted the hand/i);
+  const danSorted = await handSignature(oliver, 'Dan');
+  await expect.poll(() => handSignature(dan, 'Dan')).toEqual(danSorted);
   await expectAllSynced(pages);
 
   step('client Dan selects a real card and clicks real PLAY');

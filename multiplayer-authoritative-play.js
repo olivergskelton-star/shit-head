@@ -35,5 +35,12 @@
       if (!correctPlayer(player) || !['pickup', 'finish', 'sort'].includes(action)) return false;
       return multiplayer().sendAction?.({ type: action }) === true;
     },
+
+    sendTablePickup(player, refs) {
+      if (!correctPlayer(player)) return false;
+      const clean = cleanRefs(refs).filter((ref) => ref.zone === 'faceUp');
+      if (!clean.length) return false;
+      return multiplayer().sendAction?.({ type: 'table-pickup', refs: clean }) === true;
+    },
   };
 })();

@@ -54,6 +54,13 @@
     });
   }
 
+  // Preserve public knowledge without putting card names into the shared ticker.
+  window.ShitHeadPublicMemory = Object.freeze({
+    rememberPickup(name, cards) {
+      rememberKnownCards(name, cards);
+    },
+  });
+
   // Preserve public card memory after voluntary pile pickups. This is public
   // information: everybody saw these cards before they entered the player's hand.
   if (typeof pickupDiscard === 'function') {

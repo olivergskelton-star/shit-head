@@ -20,6 +20,24 @@
   ensurePrivateSelection();
   state.finishOrder = Array.isArray(state.finishOrder) ? state.finishOrder : [];
   state.shitHead = state.shitHead || null;
+  state.shitHeadReveal = !!state.shitHeadReveal;
+  state.playDirection = state.playDirection === -1 ? -1 : 1;
+
+  const directionControl = document.createElement('div');
+  directionControl.className = 'direction-control';
+  directionControl.innerHTML = `
+    <span class="direction-control-label">Direction</span>
+    <button class="direction-toggle" type="button" aria-label="Change direction of play">↻</button>
+  `;
+  document.querySelector('#howToPlayBtn')?.insertAdjacentElement('afterend', directionControl);
+  const directionToggle = directionControl.querySelector('.direction-toggle');
+
+  const revealShitHeadButton = document.createElement('button');
+  revealShitHeadButton.type = 'button';
+  revealShitHeadButton.className = 'reveal-shithead';
+  revealShitHeadButton.textContent = 'REVEAL BOTTOM CARDS';
+  revealShitHeadButton.hidden = true;
+  newGameBtn.insertAdjacentElement('beforebegin', revealShitHeadButton);
 
   function ensureTableSlots(name) {
     const player = state.players?.[name];
@@ -108,8 +126,10 @@
     if (concludeIfNeeded(lastOut)) return null;
 
     const fromIndex = Math.max(0, PLAYER_NAMES.indexOf(fromName));
+    const direction = state.playDirection === -1 ? -1 : 1;
     for (let offset = 1; offset <= PLAYER_NAMES.length; offset += 1) {
-      const candidate = PLAYER_NAMES[(fromIndex + offset) % PLAYER_NAMES.length];
+      const candidateIndex = (fromIndex + (offset * direction) + PLAYER_NAMES.length * 2) % PLAYER_NAMES.length;
+      const candidate = PLAYER_NAMES[candidateIndex];
       if (!isPlayerOut(candidate)) {
         state.currentPlayer = candidate;
         clearSelection();
@@ -218,6 +238,68 @@
     }
 
     return { ok: true, refs: clean, cards, rank };
+  }
+
+  function validTablePickupRefs(name, refs) {
+    const player = state.players?.[name];
+    if (!player
+      || state.phase !== 'play'
+      || state.currentPlayer !== name
+      || state.drawPile.length > 0
+      || player.hand.length > 0
+      || state.followUpRank
+      || state.discard.length === 0) return [];
+
+    const slots = ensureTableSlots(name);
+    const visible = slots.map((slot) => slot.faceUp).filter(Boolean);
+    // This recovery is available only when none of the player's visible table
+    // cards can legally be played.
+    if (!visible.length || visible.some((card) => canPlayRank(card.rank))) return [];
+
+    const clean = normaliseRefs(name, refs);
+    if (!clean.length || clean.some((ref) => ref.zone !== 'faceUp')) return [];
+    const cards = clean.map((ref) => cardForRef(name, ref));
+    if (!cards[0] || !cards.every((card) => card?.rank === cards[0].rank)) return [];
+    return clean;
+  }
+
+  function pickupTableAndDiscard(name, refs) {
+    const clean = validTablePickupRefs(name, refs);
+    if (!clean.length) {
+      state.lastMessage = 'Choose one face-up table card, or matching face-up cards, before picking up.';
+      render();
+      return false;
+    }
+
+    const player = state.players[name];
+    const slots = ensureTableSlots(name);
+    const tableCards = clean.map((ref) => slots[ref.index]?.faceUp).filter(Boolean);
+    clean.forEach((ref) => { slots[ref.index].faceUp = null; });
+    const pileCards = [...state.discard];
+    player.hand.push(...tableCards, ...pileCards);
+    state.discard = [];
+    window.ShitHeadPublicMemory?.rememberPickup?.(name, [...tableCards, ...pileCards]);
+    syncLegacyArrays(name);
+    clearSelection();
+    state.lastMessage = `${publicName(name)} picked up ${tableCards.length + pileCards.length} cards.`;
+    advanceTurn(name);
+    render();
+    return true;
+  }
+
+  function bottomCardsFor(name) {
+    return ensureTableSlots(name).map((slot) => slot.faceDown).filter(Boolean);
+  }
+
+  function revealShitHeadCards(name) {
+    if (state.phase !== 'gameover'
+      || state.shitHead !== name
+      || state.shitHeadReveal
+      || bottomCardsFor(name).length === 0) return false;
+    state.shitHeadReveal = true;
+    state.lastMessage = `${publicName(name)} revealed their remaining bottom cards.`;
+    render();
+    return true;
   }
 
   function toggleRefs(name, refs, ref) {
@@ -382,7 +464,6 @@
     const player = state.players[name];
     const slots = ensureTableSlots(name);
     const card = slots[slotIndex].faceDown;
-    const targetBefore = typeof effectiveTopDiscard === 'function' ? effectiveTopDiscard() : topDiscard();
     slots[slotIndex].faceDown = null;
     syncLegacyArrays(name);
     clearSelection();
@@ -390,11 +471,13 @@
 
     if (!canPlayRank(card.rank)) {
       const pickedUp = state.discard.length + 1;
-      player.hand.push(...state.discard, card);
+      const publicCards = [...state.discard, card];
+      player.hand.push(...publicCards);
       state.discard = [];
-      state.lastMessage = targetBefore
-        ? `${publicName(name)} turned over ${cardText(card)} — it can’t go on ${cardText(targetBefore)}, so picked up ${pickedUp} card${pickedUp === 1 ? '' : 's'}.`
-        : `${publicName(name)} turned over ${cardText(card)} and picked it up.`;
+      window.ShitHeadPublicMemory?.rememberPickup?.(name, publicCards);
+      // The failed card enters a private hand. Keep the shared message and ticker
+      // to the public consequence only, without preserving card identities.
+      state.lastMessage = `${publicName(name)} picked up ${pickedUp} card${pickedUp === 1 ? '' : 's'}.`;
       advanceTurn(name);
       render();
       return true;
@@ -584,6 +667,23 @@
       badge.textContent = isPlayerOut(name) ? 'OUT' : `HAND ×${player.hand.length}`;
       badge.setAttribute('aria-label', isPlayerOut(name) ? 'You are out' : `${player.hand.length} cards in your hand`);
     }
+
+    const tablePickupRefs = validTablePickupRefs(name, state.selectedRefs);
+    if (tablePickupRefs.length) {
+      const actions = playerSeat.querySelector('.play-actions');
+      const pickup = actions?.querySelector('.pickup-pile');
+      const play = actions?.querySelector('.play-selected');
+      const hint = actions?.querySelector('.selection-hint');
+      actions?.classList.add('visible');
+      if (pickup) {
+        pickup.hidden = false;
+        pickup.disabled = false;
+        pickup.textContent = `PICK UP ${tablePickupRefs.length} + PILE`;
+        pickup.onclick = () => pickupTableAndDiscard(name, tablePickupRefs);
+      }
+      if (play) play.hidden = true;
+      if (hint) hint.textContent = 'Selected table card(s) will join the central pile in your hand';
+    }
   }
 
   function decorateOpponentTable(container, name) {
@@ -593,7 +693,42 @@
     container?.classList.toggle('player-out', isPlayerOut(name));
   }
 
+  function renderDirectionControl() {
+    if (!directionToggle) return;
+    const clockwise = state.playDirection !== -1;
+    directionToggle.textContent = clockwise ? '↻' : '↺';
+    directionToggle.setAttribute('aria-label', `Play direction: ${clockwise ? 'clockwise' : 'anticlockwise'}. Change direction.`);
+    directionToggle.title = `${clockwise ? 'Clockwise' : 'Anticlockwise'} play`;
+    const role = window.ShitHeadMultiplayer?.status?.role || 'local';
+    directionToggle.disabled = role === 'client' || state.phase === 'play';
+  }
+
+  function renderShitHeadReveal() {
+    document.querySelector('.shithead-reveal-panel')?.remove();
+    const cards = state.shitHead ? bottomCardsFor(state.shitHead) : [];
+    const mayReveal = state.phase === 'gameover'
+      && state.viewer === state.shitHead
+      && !state.shitHeadReveal
+      && cards.length > 0;
+    revealShitHeadButton.hidden = !mayReveal;
+    revealShitHeadButton.disabled = false;
+
+    if (!state.shitHeadReveal || !cards.length) return;
+    const panel = document.createElement('aside');
+    panel.className = 'shithead-reveal-panel';
+    panel.setAttribute('aria-label', `${publicName(state.shitHead)}'s revealed bottom cards`);
+    const label = document.createElement('strong');
+    label.textContent = `${publicName(state.shitHead)}’s bottom cards`;
+    const row = document.createElement('div');
+    row.className = 'shithead-reveal-cards';
+    cards.forEach((card) => row.append(makeCard(card)));
+    panel.append(label, row);
+    document.querySelector('#table')?.append(panel);
+  }
+
   function decorateTables() {
+    renderDirectionControl();
+    renderShitHeadReveal();
     if (state.phase !== 'play' && state.phase !== 'gameover') return;
     ensureAllTableSlots();
     decorateSelfTable();
@@ -622,6 +757,9 @@
     cardForRef,
     toggleRefs,
     validateRefs: validatePlayRefs,
+    canPickupTableRefs(name, refs) { return validTablePickupRefs(name, refs).length > 0; },
+    pickupTableAndDiscard,
+    revealShitHeadCards,
     playRefs,
     playFaceDown: playFaceDownCard,
     canBlind: canPlayBlind,
@@ -635,10 +773,32 @@
   newGameBtn.addEventListener('click', () => {
     state.finishOrder = [];
     state.shitHead = null;
+    state.shitHeadReveal = false;
     clearSelection();
     PLAYER_NAMES.forEach((name) => {
       if (state.players?.[name]) delete state.players[name].tableSlots;
     });
+  });
+
+  directionToggle?.addEventListener('click', () => {
+    const role = window.ShitHeadMultiplayer?.status?.role || 'local';
+    if (role === 'client' || state.phase === 'play') return;
+    state.playDirection = state.playDirection === -1 ? 1 : -1;
+    state.lastMessage = `Play direction set to ${state.playDirection === 1 ? 'clockwise' : 'anticlockwise'}.`;
+    render();
+    if (role === 'host') window.ShitHeadMultiplayer?.publishState?.();
+  });
+
+  revealShitHeadButton.addEventListener('click', () => {
+    const role = window.ShitHeadMultiplayer?.status?.role || 'local';
+    if (role === 'client') {
+      revealShitHeadButton.disabled = true;
+      window.ShitHeadMultiplayer?.sendAction?.({ type: 'reveal-shithead' });
+      return;
+    }
+    if (revealShitHeadCards(state.viewer) && role === 'host') {
+      window.ShitHeadMultiplayer?.publishState?.();
+    }
   });
 
   render();
