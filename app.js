@@ -303,6 +303,9 @@ PLAYER_NAMES.forEach((name) => {
 viewerSelect.value = state.viewer;
 themeSelect.addEventListener("change", () => { state.theme = themeSelect.value; document.body.dataset.theme = state.theme; });
 viewerSelect.addEventListener("change", () => { state.viewer = viewerSelect.value; state.selected = []; state.lastMessage = ""; render(); });
-newGameBtn.addEventListener("click", dealNewGame);
+// Resolve `dealNewGame` when the button is clicked. Later engine layers wrap the
+// function to reset round-scoring metadata while preserving the running tally;
+// passing the original function object here would bypass those wrappers.
+newGameBtn.addEventListener("click", () => dealNewGame());
 drawPileButton.addEventListener("click", drawForViewer);
 dealNewGame();
