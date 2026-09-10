@@ -56,12 +56,14 @@ async function canonicalSignature(page) {
     phase: state.phase,
     currentPlayer: state.currentPlayer,
     startingPlayer: state.startingPlayer,
+    playDirection: state.playDirection,
     drawPile: state.drawPile.map((card) => `${card.rank}${card.suit}`),
     discard: state.discard.map((card) => `${card.rank}${card.suit}`),
     burnPile: state.burnPile.map((card) => `${card.rank}${card.suit}`),
     followUpRank: state.followUpRank,
     finishOrder: state.finishOrder,
     shitHead: state.shitHead,
+    shitHeadReveal: state.shitHeadReveal,
     scores: state.scores,
     roundScored: state.roundScored,
     players: Object.fromEntries(PLAYER_NAMES.map((name) => [name, {
@@ -119,6 +121,7 @@ async function forceScenario(host, pages, spec) {
     state.followUpRank = null;
     state.finishOrder = scenario.finishOrder || [];
     state.shitHead = null;
+    state.shitHeadReveal = false;
     state.roundScored = false;
     state.scores = scenario.scores || { Oliver: 0, Dan: 0, Chris: 0 };
     state.selected = [];
@@ -149,6 +152,13 @@ async function clickHandIndices(page, indices) {
 test('table stacks, blind play, burns, privacy, gameover and score stay synchronized', async ({ browser }) => {
   const { context, pages, oliver, dan, chris } = await openStartedRoom(browser);
 
+  step('host reverses direction between deals and clients see the locked setting');
+  await expect(oliver.locator('.direction-toggle')).toBeEnabled();
+  await expect(dan.locator('.direction-toggle')).toBeDisabled();
+  await oliver.locator('.direction-toggle').click();
+  await Promise.all(pages.map((page) => page.waitForFunction(() => state.playDirection === -1)));
+  await expectAllSynced(pages);
+
   step('face-up play removes only that slot top and preserves its face-down card');
   await forceScenario(oliver, pages, {
     marker: 'TEST independent slot',
@@ -168,6 +178,7 @@ test('table stacks, blind play, burns, privacy, gameover and score stay synchron
   await oliver.waitForFunction(() => state.players.Oliver.tableSlots[0].faceUp === null);
   expect(await oliver.evaluate(() => state.players.Oliver.tableSlots[0].faceDown.rank)).toBe('4');
   expect(await oliver.evaluate(() => state.players.Oliver.tableSlots[1].faceUp.rank)).toBe('5');
+  expect(await oliver.evaluate(() => state.currentPlayer)).toBe('Chris');
   await expectAllSynced(pages);
 
   step('one exposed blind is playable even while other face-up cards remain');
@@ -211,6 +222,64 @@ test('table stacks, blind play, burns, privacy, gameover and score stay synchron
   await playSelected(oliver);
   await oliver.waitForFunction(() => state.players.Oliver.hand.length === 0 && state.players.Oliver.tableSlots[2].faceUp === null);
   expect(await oliver.evaluate(() => state.discard.map((card) => card.rank))).toEqual(['K', 'K', 'K']);
+  await expectAllSynced(pages);
+
+  step('client moves matching unplayable table cards and the central pile into hand');
+  await forceScenario(oliver, pages, {
+    marker: 'TEST table plus pile pickup',
+    currentPlayer: 'Dan',
+    discard: [c('9', '\u2663'), c('K', '\u2666')],
+    players: {
+      Oliver: p([c('4')]),
+      Dan: p([], [
+        { faceUp: c('6', '\u2660'), faceDown: c('4', '\u2663') },
+        { faceUp: c('6', '\u2665'), faceDown: c('5', '\u2666') },
+        { faceUp: null, faceDown: null },
+      ]),
+      Chris: p([c('5')]),
+    },
+  });
+  await dan.locator('.self-face-row button.table-play-card[data-slot-index="0"]').click();
+  await dan.locator('.self-face-row button.table-play-card[data-slot-index="1"]').click();
+  await expect(dan.locator('.pickup-pile')).toHaveText('PICK UP 2 + PILE');
+  await dan.locator('.pickup-pile').click();
+  await oliver.waitForFunction(() => (
+    state.discard.length === 0
+    && state.players.Dan.hand.length === 4
+    && state.players.Dan.tableSlots[0].faceUp === null
+    && state.players.Dan.tableSlots[1].faceUp === null
+  ));
+  expect(await oliver.evaluate(() => state.players.Dan.tableSlots.slice(0, 2).map((slot) => slot.faceDown.rank))).toEqual(['4', '5']);
+  expect(await oliver.evaluate(() => state.currentPlayer)).toBe('Oliver');
+  expect(await oliver.evaluate(() => state.lastMessage)).toBe('Dan picked up 4 cards.');
+  expect(await oliver.evaluate(() => state.players.Dan.knownHand)).toEqual(expect.arrayContaining([
+    c('6', '\u2660'), c('6', '\u2665'), c('9', '\u2663'), c('K', '\u2666'),
+  ]));
+  await expectAllSynced(pages);
+
+  step('a failed blind pickup never writes card identities to shared history');
+  await forceScenario(oliver, pages, {
+    marker: 'TEST blind pickup privacy',
+    currentPlayer: 'Oliver',
+    discard: [c('A', '\u2660')],
+    players: {
+      Oliver: p([], [
+        { faceUp: null, faceDown: c('Q', '\u2663') },
+        { faceUp: null, faceDown: null },
+        { faceUp: null, faceDown: null },
+      ]),
+      Dan: p([c('4')]),
+      Chris: p([c('5')]),
+    },
+  });
+  await oliver.locator('.self-face-row button.table-blind-card[data-slot-index="0"]').click();
+  await oliver.waitForFunction(() => state.players.Oliver.hand.length === 2 && state.discard.length === 0);
+  expect(await oliver.evaluate(() => state.lastMessage)).toBe('Oliver picked up 2 cards.');
+  expect(await oliver.evaluate(() => state.players.Oliver.knownHand)).toEqual(expect.arrayContaining([
+    c('Q', '\u2663'), c('A', '\u2660'),
+  ]));
+  const pickupHistory = await oliver.evaluate(() => state.gameHistory.map((entry) => entry.text).join(' | '));
+  expect(pickupHistory).not.toMatch(/Q♣|A♠|turned over/i);
   await expectAllSynced(pages);
 
   step('three 8s burn and keep the turn');
@@ -292,7 +361,11 @@ test('table stacks, blind play, burns, privacy, gameover and score stay synchron
     players: {
       Oliver: p([], emptySlots()),
       Dan: p([c('10', '♠')], emptySlots()),
-      Chris: p([c('4', '♥')], emptySlots()),
+      Chris: p([c('4', '♥')], [
+        { faceUp: null, faceDown: c('7', '\u2663') },
+        { faceUp: null, faceDown: c('J', '\u2666') },
+        { faceUp: null, faceDown: null },
+      ]),
     },
   });
   await dan.locator('.hand button.card').first().click();
@@ -322,11 +395,25 @@ test('table stacks, blind play, burns, privacy, gameover and score stay synchron
     await expect(page.locator('.pile-draw .stacked')).toBeHidden();
   }
 
+  step('only the Shit Head can choose to reveal remaining bottom cards');
+  await expect(chris.locator('.reveal-shithead')).toBeVisible();
+  await expect(oliver.locator('.reveal-shithead')).toBeHidden();
+  await chris.locator('.reveal-shithead').click();
+  await Promise.all(pages.map((page) => page.waitForFunction(() => state.shitHeadReveal === true)));
+  await expectAllSynced(pages);
+  for (const page of pages) {
+    await expect(page.locator('.shithead-reveal-panel')).toBeVisible();
+    await expect(page.locator('.shithead-reveal-cards .card')).toHaveCount(2);
+    await expect(page.locator('.shithead-reveal-cards')).toContainText('7♣');
+    await expect(page.locator('.shithead-reveal-cards')).toContainText('J♦');
+  }
+
   step('new deal preserves the shared tally and arms the following round for scoring');
   await oliver.locator('#newGameBtn').click();
   await Promise.all(pages.map((page) => page.waitForFunction(() => (
     state.phase === 'setup'
     && state.roundScored === false
+    && state.shitHeadReveal === false
     && state.scores.Chris === 1
   ))));
   await expectAllSynced(pages);

@@ -12,6 +12,19 @@ function tickerIsGameEvent(message) {
     && !/\bsetup\b/i.test(message);
 }
 
+function tickerPublicText(message) {
+  if (!message || !/\bpicked up\b/i.test(message)) return message;
+
+  const counted = message.match(/^(.+?)\b(?:turned over .*?\b)?(?:so )?picked up (\d+) cards?\b/i);
+  if (counted) {
+    const count = Number(counted[2]);
+    return `${counted[1].trim()} picked up ${count} card${count === 1 ? "" : "s"}.`;
+  }
+
+  const player = message.match(/^(.+?)\b(?:turned over .*?)?picked it up\b/i);
+  return player ? `${player[1].trim()} picked up 1 card.` : "A player picked up cards.";
+}
+
 function tickerAdd(text, kind = "event") {
   if (!text) return;
   const previous = state.gameHistory[state.gameHistory.length - 1];
@@ -37,7 +50,7 @@ function captureTickerEvents() {
   state.tickerWasPlaying = true;
 
   if (state.lastMessage && state.lastMessage !== state.tickerLastMessage && tickerIsGameEvent(state.lastMessage)) {
-    tickerAdd(state.lastMessage, "event");
+    tickerAdd(tickerPublicText(state.lastMessage), "event");
     state.tickerLastMessage = state.lastMessage;
   }
 

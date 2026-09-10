@@ -70,18 +70,14 @@ function selectSetupCard(name, zone, index) {
   const chosen = state.setupSelection;
   if (!chosen) {
     state.setupSelection = { zone, index };
-    state.lastMessage = zone === "hand"
-      ? `Selected ${cardText(source[index])} from your hand — choose a face-up table card to swap.`
-      : `Selected ${cardText(source[index])} from your table — choose a hand card to swap.`;
+    state.lastMessage = `${publicName(name)} is arranging their cards.`;
     render();
     return;
   }
 
   if (chosen.zone === zone) {
     state.setupSelection = { zone, index };
-    state.lastMessage = zone === "hand"
-      ? `Selected ${cardText(source[index])} from your hand — choose a face-up table card to swap.`
-      : `Selected ${cardText(source[index])} from your table — choose a hand card to swap.`;
+    state.lastMessage = `${publicName(name)} is arranging their cards.`;
     render();
     return;
   }
@@ -95,7 +91,7 @@ function selectSetupCard(name, zone, index) {
   player.hand[handIndex] = tableCard;
   player.faceUp[tableIndex] = handCard;
   state.setupSelection = null;
-  state.lastMessage = `${publicName(name)} swapped ${cardText(handCard)} with ${cardText(tableCard)}.`;
+  state.lastMessage = `${publicName(name)} adjusted their face-up cards.`;
   render();
   // Setup mutations are the one place clients still propose their own seat state.
   // Send immediately so another browser render cannot overwrite the swap first.

@@ -308,8 +308,10 @@
       if (isReady && !wasReady) {
         const waiting = PLAYER_NAMES.filter((name) => !state.setupReady[name]).map(publicName);
         state.lastMessage = `${publicName(player)} is ready. Waiting for ${waiting.join(" and ")}.`;
-      } else if (proposed.lastMessage) {
-        state.lastMessage = proposed.lastMessage;
+      } else {
+        // Setup proposals contain private hand choices. Publish only the fact
+        // that the player is arranging their cards, never the selected ranks.
+        state.lastMessage = `${publicName(player)} is arranging their cards.`;
       }
     }
 
@@ -327,7 +329,13 @@
   }
 
   function executeHostAction(player, action) {
-    if (!action || typeof action !== "object" || state.phase !== "play") return false;
+    if (!action || typeof action !== "object") return false;
+
+    if (action.type === "reveal-shithead") {
+      return window.ShitHeadTablePlay?.revealShitHeadCards?.(player) === true;
+    }
+
+    if (state.phase !== "play") return false;
 
     // Sorting changes only card order, not turn/game rules, so players may sort
     // their own hand at any point during play.
@@ -355,6 +363,12 @@
       if (typeof pickupDiscard !== "function") return false;
       pickupDiscard(player);
       return true;
+    }
+
+    if (action.type === "table-pickup") {
+      const refs = cleanActionRefs(action.refs);
+      if (!refs.length || !window.ShitHeadTablePlay?.pickupTableAndDiscard) return false;
+      return window.ShitHeadTablePlay.pickupTableAndDiscard(player, refs) === true;
     }
 
     if (action.type === "finish") {
