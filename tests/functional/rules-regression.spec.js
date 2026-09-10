@@ -147,7 +147,7 @@ async function clickHandIndices(page, indices) {
 }
 
 test('table stacks, blind play, burns, privacy, gameover and score stay synchronized', async ({ browser }) => {
-  const { context, pages, oliver, dan } = await openStartedRoom(browser);
+  const { context, pages, oliver, dan, chris } = await openStartedRoom(browser);
 
   step('face-up play removes only that slot top and preserves its face-down card');
   await forceScenario(oliver, pages, {
@@ -317,8 +317,48 @@ test('table stacks, blind play, burns, privacy, gameover and score stay synchron
   await expectAllSynced(pages);
 
   for (const page of pages) {
+    await expect(page.locator('.player-notepad[data-player="Chris"] .notepad-score .notepad-value')).toHaveText('1');
     await expect(page.locator('.pile-draw')).toHaveClass(/is-empty/);
     await expect(page.locator('.pile-draw .stacked')).toBeHidden();
+  }
+
+  step('new deal preserves the shared tally and arms the following round for scoring');
+  await oliver.locator('#newGameBtn').click();
+  await Promise.all(pages.map((page) => page.waitForFunction(() => (
+    state.phase === 'setup'
+    && state.roundScored === false
+    && state.scores.Chris === 1
+  ))));
+  await expectAllSynced(pages);
+  for (const page of pages) {
+    await expect(page.locator('.player-notepad[data-player="Chris"] .notepad-score .notepad-value')).toHaveText('1');
+  }
+
+  step('a different loser scores on the following round in every browser');
+  await forceScenario(oliver, pages, {
+    marker: 'TEST second round scoring',
+    currentPlayer: 'Chris',
+    discard: [c('6', '\u2663')],
+    finishOrder: ['Oliver'],
+    scores: { Oliver: 0, Dan: 0, Chris: 1 },
+    players: {
+      Oliver: p([], emptySlots()),
+      Dan: p([c('4', '\u2665')], emptySlots()),
+      Chris: p([c('10', '\u2660')], emptySlots()),
+    },
+  });
+  await chris.locator('.hand button.card').first().click();
+  await playSelected(chris);
+  await Promise.all(pages.map((page) => page.waitForFunction(() => (
+    state.phase === 'gameover'
+    && state.shitHead === 'Dan'
+    && state.scores.Dan === 1
+    && state.scores.Chris === 1
+  ))));
+  await expectAllSynced(pages);
+  for (const page of pages) {
+    await expect(page.locator('.player-notepad[data-player="Dan"] .notepad-score .notepad-value')).toHaveText('1');
+    await expect(page.locator('.player-notepad[data-player="Chris"] .notepad-score .notepad-value')).toHaveText('1');
   }
 
   step('PASS: table/endgame regression path is synchronized');
