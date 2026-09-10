@@ -1,11 +1,11 @@
 const fs = require('node:fs');
 const { test, expect } = require('@playwright/test');
 
-test('desktop branding, foreground drink, snack and opponent notes match Build 0.9.31', async ({ page }) => {
+test('desktop branding, foreground drink, snack and opponent notes match Build 0.9.32', async ({ page }) => {
   await page.setViewportSize({ width: 1150, height: 900 });
   await page.goto('/index.html');
   await page.waitForFunction(() => (
-    window.SHITHEAD_BUILD === '0.9.31'
+    window.SHITHEAD_BUILD === '0.9.32'
     && document.documentElement.dataset.tableAssets === 'ready'
     && document.querySelectorAll('.player-notepad').length === 3
   ));
@@ -29,6 +29,27 @@ test('desktop branding, foreground drink, snack and opponent notes match Build 0
     });
     expect(geometry.noteBottom).toBeLessThan(geometry.cardsTop);
   }
+
+  const pileGeometry = await page.evaluate(() => {
+    state.discard = [
+      { rank: '4', suit: '\u2660' },
+      { rank: '7', suit: '\u2665' },
+      { rank: 'J', suit: '\u2663' },
+    ];
+    render();
+
+    const count = document.querySelector('#pileCount');
+    const card = document.querySelector('#discardPile .pile-mess-card');
+    const countRect = count.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    return {
+      countText: count.textContent,
+      countBottom: countRect.bottom,
+      cardTop: cardRect.top,
+    };
+  });
+  expect(pileGeometry.countText).toBe('3');
+  expect(pileGeometry.countBottom).toBeLessThanOrEqual(pileGeometry.cardTop);
 
   fs.mkdirSync('artifacts', { recursive: true });
   await page.screenshot({ path: 'artifacts/desktop-final.png', fullPage: true });

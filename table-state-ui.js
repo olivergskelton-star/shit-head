@@ -57,13 +57,15 @@ function decoratePileUi() {
   const label = wrap?.querySelector(".pile-label");
   if (label) label.textContent = "Pile";
 
-  let count = pile.querySelector(".discard-count");
-  if (!count) {
-    count = document.createElement("span");
-    count.className = "pile-count discard-count";
-    pile.append(count);
+  // The engine owns one count badge beside the pile. Keeping it outside
+  // `#discardPile` prevents the messy played-card render from deleting or
+  // covering it.
+  const count = wrap?.querySelector("#pileCount");
+  if (count) {
+    count.textContent = String(state.discard.length);
+    count.classList.toggle("is-zero", state.discard.length === 0);
+    count.setAttribute("aria-label", `${state.discard.length} card${state.discard.length === 1 ? "" : "s"} in pile`);
   }
-  count.textContent = String(state.discard.length);
 }
 
 const renderBeforeTableStateUi = render;
