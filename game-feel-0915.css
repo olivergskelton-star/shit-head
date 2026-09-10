@@ -123,6 +123,16 @@
   opacity: 0;
 }
 
+/* Keep the live pile total in the reserved header band. Played cards are
+   deliberately messy and can extend over every lower edge of the pile. */
+.pile-main-count {
+  top: -8px;
+  right: -14px;
+  bottom: auto !important;
+  z-index: 40;
+  pointer-events: none;
+}
+
 /* Short, functional card-motion ghosts. */
 .card-flight-ghost {
   position: fixed !important;
