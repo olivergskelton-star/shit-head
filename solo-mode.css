@@ -1,0 +1,7 @@
+#soloPlay,.solo-actions button {color:#fff;background:#17342a;border:1px solid #c8a56c;border-radius:8px;padding:10px 14px;font:inherit;cursor:pointer}
+#offlineStatus {display:block;font-size:12px;color:#e5d8ba;margin-top:5px}
+#soloDialog {max-width:440px;width:calc(100% - 40px);box-sizing:border-box;background:#17342a;color:#fff;border:1px solid #c8a56c;border-radius:14px;padding:24px;font-size:16px}
+#soloDialog::backdrop {background:#000a}
+#soloDialog h2 {margin-top:0}.solo-actions {display:flex;flex-wrap:wrap;gap:10px}.solo-help {font-size:14px;line-height:1.5;color:#e5d8ba}
+.cpu-label {position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:12px;white-space:nowrap;color:#fff;background:#17342a;padding:3px 8px;border-radius:6px;pointer-events:none}
+.solo-mode #viewerSelect {opacity:.7}

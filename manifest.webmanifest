@@ -1,0 +1,17 @@
+{
+  "name": "S**t Head \u2014 Red Wine & Cards",
+  "short_name": "S**t Head",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#17342a",
+  "theme_color": "#17342a",
+  "icons": [
+    {
+      "src": "solo-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
