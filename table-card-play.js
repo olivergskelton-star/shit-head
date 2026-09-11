@@ -668,6 +668,21 @@
       badge.setAttribute('aria-label', isPlayerOut(name) ? 'You are out' : `${player.hand.length} cards in your hand`);
     }
 
+    // Local/solo selections include table refs, whereas the original hand UI
+    // enables PLAY from hand-only state.selected. Use the canonical selection.
+    if ((window.ShitHeadMultiplayer?.status?.role || 'local') === 'local') {
+      const actions = playerSeat.querySelector('.play-actions');
+      const play = actions?.querySelector('.play-selected');
+      const refs = normaliseRefs(name, state.selectedRefs);
+      if (refs.length) actions?.classList.add('visible');
+      if (play) {
+        play.disabled = !validatePlayRefs(name, refs).ok;
+        play.textContent = refs.length > 1 ? `PLAY ${refs.length}` : 'PLAY';
+      }
+      const hint = actions?.querySelector('.selection-hint');
+      if (hint && refs.length) hint.textContent = refs.length > 1 ? `${refs.length} matching cards` : 'Selected';
+    }
+
     const tablePickupRefs = validTablePickupRefs(name, state.selectedRefs);
     if (tablePickupRefs.length) {
       const actions = playerSeat.querySelector('.play-actions');
