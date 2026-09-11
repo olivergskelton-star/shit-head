@@ -1,0 +1,35 @@
+const {test,expect}=require('@playwright/test');
+const fs=require('node:fs');
+const path=require('node:path');
+test('lowest hand opens and CPUs preserve tens without blocking an escape or finish',async({page})=>{
+  await page.route('https://unpkg.com/**',r=>r.fulfill({contentType:'application/javascript',body:fs.readFileSync(path.join(__dirname,'fake-peer.js'),'utf8')}));
+  await page.goto('/index.html');
+  await page.locator('#soloPlay').click();await page.locator('#soloNew').click();
+  const result=await page.evaluate(()=>{
+    const c=(rank,suit='♠')=>({rank,suit});
+    state.players.Oliver.hand=[c('4'),c('A')];
+    state.players.Dan.hand=[c('5'),c('10')];
+    state.players.Chris.hand=[c('6'),c('K')];
+    markSetupReady(state.viewer);
+    const soleFour=state.startingPlayer;
+    state.players.Dan.hand=[c('4','♥'),c('5'),c('5','♦'),c('10')];
+    enforceOpeningStarter();
+    const tiedFour=state.startingPlayer;
+    const opening=window.ShitHeadSolo.choose('Dan');
+    state.discard=[c('4','♣')];
+    const weak=Array.from({length:5},(_,i)=>window.ShitHeadSolo.choose('Dan',i)).filter(a=>a.type==='play').map(a=>a.rank);
+    state.discard=[c('A','♦')];
+    const escape=window.ShitHeadSolo.choose('Dan').rank;
+    state.drawPile=[];state.discard=[c('4','♣')];state.players.Dan.hand=[c('10')];
+    state.players.Dan.tableSlots=Array.from({length:3},()=>({faceUp:null,faceDown:null}));
+    const finish=window.ShitHeadSolo.choose('Dan').rank;
+    return {soleFour,tiedFour,opening:opening.rank,weak,escape,finish};
+  });
+  expect(result.soleFour).toBe('Oliver');
+  expect(result.tiedFour).toBe('Dan');
+  expect(result.opening).toBe('4');
+  expect(result.weak.length).toBeGreaterThan(0);
+  expect(result.weak).not.toContain('10');
+  expect(result.escape).toBe('10');
+  expect(result.finish).toBe('10');
+});

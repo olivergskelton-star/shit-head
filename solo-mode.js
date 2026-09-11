@@ -122,12 +122,24 @@
         let tail = 0;
         for (let i=view.pile.length-1;i>=0 && view.pile[i].rank===rank;i--) tail++;
         const burn = rank === '10' || tail+candidate.length >= (rank === '8' ? 3 : 4);
-        plays.push({type:'play', refs:candidate, score: candidate.length*9-strength(rank)+(burn ? 24+Math.min(view.pile.length,16):0)});
+        plays.push({type:'play', rank, refs:candidate, score: candidate.length*9-strength(rank)+(burn ? 24+Math.min(view.pile.length,16):0)});
       }
     }
     if (variation > 1 && variation % 3 === 2 && view.pile.length && !view.followUp) return {type:'pickup'};
     if (plays.length) {
-      const unique = [...new Map(plays.map(p => [JSON.stringify(p.refs), p])).values()].sort((a,b)=>b.score-a.score);
+      let options = plays;
+      // Show the qualifying opening card, including when READY order broke a tie.
+      if (!view.pile.length && !state.burnPile.length && !view.followUp) {
+        const lowest = STARTING_RANK_ORDER.find(rank => options.some(p => p.rank === rank));
+        if (lowest) options = options.filter(p => p.rank === lowest);
+      }
+      // A ten is our strongest escape card. Keep it if a cheaper play works,
+      // unless it clears all remaining cards and finishes this player's round.
+      const remaining = view.hand.length + view.slots.reduce((n,s) => n + !!s.faceUp + !!s.bottom, 0);
+      const winning = options.filter(p => !view.drawCount && p.refs.length === remaining);
+      if (winning.length) options = winning;
+      else if (options.some(p => p.rank !== '10')) options = options.filter(p => p.rank !== '10');
+      const unique = [...new Map(options.map(p => [JSON.stringify(p.refs), p])).values()].sort((a,b)=>b.score-a.score);
       return unique[variation % unique.length];
     }
     if (view.followUp) return {type:'finish'};
