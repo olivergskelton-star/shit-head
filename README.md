@@ -28,3 +28,22 @@ The current play rule is only a placeholder: a card may be played if it is equal
 5. Add game history, Shit Head stats and personalised table details.
 
 The app is intentionally plain HTML/CSS/JavaScript so it can be hosted directly as a static site, with realtime multiplayer added separately.
+
+## Solo and offline play (0.9.35)
+
+Choose **Play solo** to play against two computer opponents. Arrange your own
+face-up cards and press **READY**; the CPUs arrange their cards automatically.
+The normal rules engine validates every CPU move, including matching hand/table
+plays, follow-ups, burns, direction changes and endgame pickups. CPU decisions
+never inspect other hands, the draw order or face-down values.
+
+Solo games save automatically on this browser/device, including setup, scores
+and the current turn. **Solo · pause** opens the resume/new-game menu. Starting
+a new solo game replaces its save. Online games do not overwrite the solo save.
+
+Before travelling, open the game online and wait for **Ready for offline play**.
+Bookmark the page or add it to your home screen. All local scripts, styles and
+table graphics are precached; solo play and resuming work without a connection.
+Online multiplayer still requires internet. Browser storage clearing removes
+both the downloaded game and its save. Updates activate on the next launch after
+all tabs using the previous version have closed, keeping a running game consistent.

@@ -1,14 +1,15 @@
 const fs = require('node:fs');
 const { test, expect } = require('@playwright/test');
 
-test('desktop branding, foreground drink, snack and opponent notes match Build 0.9.34', async ({ page }) => {
+test('desktop branding, foreground drink, snack and opponent notes preserve the 0.9.34 layout', async ({ page }) => {
   await page.setViewportSize({ width: 1150, height: 900 });
   await page.goto('/index.html');
-  await page.waitForFunction(() => (
-    window.SHITHEAD_BUILD === '0.9.34'
+  const expectedBuild = fs.readFileSync('build-version.js', 'utf8').match(/window\.SHITHEAD_BUILD = "([^"]+)"/)[1];
+  await page.waitForFunction((build) => (
+    window.SHITHEAD_BUILD === build
     && document.documentElement.dataset.tableAssets === 'ready'
     && document.querySelectorAll('.player-notepad').length === 3
-  ));
+  ), expectedBuild);
 
   await expect(page.locator('.topbar h1')).toHaveText('S**t Head');
 
