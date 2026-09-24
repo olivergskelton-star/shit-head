@@ -207,9 +207,11 @@ function enhanceTurnActions() {
   const actions = playerSeat.querySelector(".play-actions");
   if (!actions) return;
 
-  const isMyTurn = state.currentPlayer === state.viewer;
+  const inPlay = state.phase === "play";
+  const isMyTurn = inPlay && state.currentPlayer === state.viewer;
   const followUp = isMyTurn && !!state.followUpRank;
   const canPickup = isMyTurn && !state.followUpRank && state.discard.length > 0;
+  if (!inPlay) actions.classList.remove("visible");
   if (canPickup || followUp) actions.classList.add("visible");
 
   let pickup = actions.querySelector(".pickup-pile");
@@ -220,7 +222,7 @@ function enhanceTurnActions() {
     pickup.textContent = "PICK UP";
     actions.append(pickup);
   }
-  pickup.hidden = followUp;
+  pickup.hidden = !canPickup;
   pickup.disabled = !canPickup;
   pickup.onclick = () => pickupDiscard(state.viewer);
 
