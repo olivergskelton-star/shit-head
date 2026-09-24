@@ -529,8 +529,13 @@
 
   // Replace the old engine actions so pickup/finish also respect out-player skipping.
   pickupDiscard = function pickupDiscard0915(name) {
-    if (name !== state.currentPlayer || state.phase !== 'play') {
-      state.lastMessage = state.currentPlayer ? `It’s ${publicName(state.currentPlayer)}’s turn.` : 'The game is over.';
+    if (state.phase !== 'play') {
+      state.lastMessage = 'The game is over.';
+      render();
+      return;
+    }
+    if (name !== state.currentPlayer) {
+      state.lastMessage = `It’s ${publicName(state.currentPlayer)}’s turn.`;
       render();
       return;
     }
@@ -567,8 +572,13 @@
   // Local/single-browser selection. Online browsers use the multiplayer selection
   // layer, which calls the same toggleRefs/playRefs functions with private refs.
   toggleCardSelection = function toggleCardSelection0915(name, index, zone = 'hand') {
-    if (state.phase !== 'play' || name !== state.currentPlayer) {
-      state.lastMessage = state.currentPlayer ? `It’s ${publicName(state.currentPlayer)}’s turn.` : 'The game is over.';
+    if (state.phase !== 'play') {
+      state.lastMessage = 'The game is over.';
+      render();
+      return;
+    }
+    if (name !== state.currentPlayer) {
+      state.lastMessage = `It’s ${publicName(state.currentPlayer)}’s turn.`;
       render();
       return;
     }

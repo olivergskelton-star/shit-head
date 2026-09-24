@@ -393,6 +393,9 @@ test('table stacks, blind play, burns, privacy, gameover and score stay synchron
     await expect(page.locator('.player-notepad[data-player="Chris"] .notepad-score .notepad-value')).toHaveText('1');
     await expect(page.locator('.pile-draw')).toHaveClass(/is-empty/);
     await expect(page.locator('.pile-draw .stacked')).toBeHidden();
+    await expect(page.locator('#statusText')).toContainText('Game over');
+    await expect(page.locator('.pickup-pile')).toBeHidden();
+    await expect(page.locator('.finish-turn')).toBeHidden();
   }
 
   step('only the Shit Head can choose to reveal remaining bottom cards');

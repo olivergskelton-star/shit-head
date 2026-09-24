@@ -291,7 +291,12 @@ function render() {
   renderOpponent(opponentRight, seats.right);
   renderSelf(seats.self);
   renderDiscard();
-  statusText.textContent = state.lastMessage || (state.currentPlayer === state.viewer ? "Your turn — choose a card." : `${publicName(state.currentPlayer)}’s turn.`);
+  if (state.phase === "gameover") {
+    statusText.textContent = state.lastMessage
+      || (state.shitHead ? `${publicName(state.shitHead)} is the Shit Head. Game over.` : "Game over.");
+  } else {
+    statusText.textContent = state.lastMessage || (state.currentPlayer === state.viewer ? "Your turn — choose a card." : `${publicName(state.currentPlayer)}’s turn.`);
+  }
 }
 
 PLAYER_NAMES.forEach((name) => {
