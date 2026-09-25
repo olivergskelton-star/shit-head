@@ -33,3 +33,23 @@ test('lowest hand opens and CPUs preserve tens without blocking an escape or fin
   expect(result.escape).toBe('10');
   expect(result.finish).toBe('10');
 });
+
+test('late-game CPU pressures a nearly-out opponent instead of always shedding its lowest card',async({page})=>{
+  await page.goto('/index.html');
+  await page.locator('#soloPlay').click();await page.locator('#soloNew').click();
+  const choice=await page.evaluate(()=>{
+    const c=(rank,suit='♠')=>({rank,suit});
+    state.phase='play';state.currentPlayer='Dan';state.viewer='Oliver';
+    state.drawPile=[];state.discard=[c('4','♣')];state.burnPile=[];state.followUpRank=null;
+    for(const name of PLAYER_NAMES){
+      state.players[name].tableSlots=Array.from({length:3},()=>({faceUp:null,faceDown:null}));
+      state.players[name].faceUp=[];state.players[name].faceDown=[];
+    }
+    state.players.Oliver.hand=[c('K')];
+    state.players.Dan.hand=[c('4','♥'),c('9')];
+    state.players.Chris.hand=[c('Q'),c('J')];
+    return window.ShitHeadSolo.choose('Dan');
+  });
+  expect(choice.type).toBe('play');
+  expect(choice.rank).toBe('9');
+});

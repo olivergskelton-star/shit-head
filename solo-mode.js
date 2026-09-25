@@ -105,6 +105,250 @@
       followUp: state.followUpRank,
     };
   }
+
+  function cardTotal(player) {
+    const slots = Array.isArray(player?.tableSlots) ? player.tableSlots : [];
+    return (player?.hand?.length || 0)
+      + slots.filter(slot => slot?.faceUp).length
+      + slots.filter(slot => slot?.faceDown).length;
+  }
+
+  function strategySlots(player) {
+    if (Array.isArray(player?.tableSlots) && player.tableSlots.length) {
+      return [0, 1, 2].map(index => ({
+        faceUp: player.tableSlots[index]?.faceUp ? {...player.tableSlots[index].faceUp} : null,
+        // A covered card is deliberately represented only by its presence. The
+        // CPU must not inspect a face-down identity while choosing a move.
+        faceDown: player.tableSlots[index]?.faceDown ? {} : null,
+      }));
+    }
+    return [0, 1, 2].map(index => ({
+      faceUp: player?.faceUp?.[index] ? {...player.faceUp[index]} : null,
+      faceDown: player?.faceDown?.[index] ? {} : null,
+    }));
+  }
+
+  function strategyState(name) {
+    const projected = JSON.parse(JSON.stringify(state));
+    projected.viewer = name;
+    projected.drawPile = (state.drawPile || []).map(() => ({}));
+    projected.discard = (state.discard || []).map(card => ({...card}));
+    projected.burnPile = (state.burnPile || []).map(card => ({...card}));
+    projected.players = Object.fromEntries(Object.entries(state.players || {}).map(([id, source]) => {
+      const slots = strategySlots(source);
+      const hand = id === name
+        ? (source.hand || []).map(card => ({...card}))
+        : (source.hand || []).map(() => ({}));
+      const knownHand = id === name
+        ? hand.filter(card => typeof card.rank === 'string').map(card => ({...card}))
+        : (Array.isArray(source.knownHand) ? source.knownHand : []).map(card => ({...card}));
+      return [id, {
+        ...source,
+        hand,
+        knownHand,
+        tableSlots: slots,
+        faceUp: slots.map(slot => slot.faceUp).filter(Boolean),
+        faceDown: slots.map(slot => slot.faceDown).filter(Boolean),
+      }];
+    }));
+    return projected;
+  }
+
+  function removeStrategyRefs(player, refs) {
+    refs.filter(ref => ref.zone === 'hand')
+      .map(ref => ref.index)
+      .sort((a, b) => b - a)
+      .forEach(index => player.hand.splice(index, 1));
+    refs.filter(ref => ref.zone === 'faceUp')
+      .forEach(ref => {
+        if (player.tableSlots?.[ref.index]) player.tableSlots[ref.index].faceUp = null;
+      });
+    player.faceUp = (player.tableSlots || []).map(slot => slot.faceUp).filter(Boolean);
+    player.faceDown = (player.tableSlots || []).map(slot => slot.faceDown).filter(Boolean);
+  }
+
+  function strategyBurns(rank, playedCount, discard) {
+    if (rank === '10') return true;
+    let run = 0;
+    for (let index = (discard || []).length - 1; index >= 0; index -= 1) {
+      if (discard[index]?.rank !== rank) break;
+      run += 1;
+    }
+    const total = run + playedCount;
+    return rank === '8' ? total >= 3 : total >= 4;
+  }
+
+  function strategyNextLiving(projected, fromName) {
+    const ids = Object.keys(projected.players || {});
+    const fromIndex = Math.max(0, ids.indexOf(fromName));
+    const direction = projected.playDirection === -1 ? -1 : 1;
+    for (let offset = 1; offset <= ids.length; offset += 1) {
+      const index = (fromIndex + offset * direction + ids.length * 2) % ids.length;
+      const candidate = ids[index];
+      if (cardTotal(projected.players[candidate]) > 0) return candidate;
+    }
+    return null;
+  }
+
+  function strategyFinishTurn(projected, name, rank, burned) {
+    const player = projected.players[name];
+    const hasMatching = !burned && cardTotal(player) > 0
+      && ((player.hand || []).some(card => card.rank === rank)
+        || (projected.drawPile.length === 0 && (player.tableSlots || []).some(slot => slot.faceUp?.rank === rank)));
+
+    if (burned && cardTotal(player) > 0) {
+      projected.followUpRank = null;
+      projected.currentPlayer = name;
+      return;
+    }
+    if (hasMatching) {
+      projected.followUpRank = rank;
+      projected.currentPlayer = name;
+      return;
+    }
+
+    projected.followUpRank = null;
+    const next = strategyNextLiving(projected, name);
+    projected.currentPlayer = next || name;
+    const living = Object.keys(projected.players || {}).filter(id => cardTotal(projected.players[id]) > 0);
+    if (living.length <= 1) {
+      projected.phase = 'gameover';
+      projected.shitHead = living[0] || null;
+    }
+  }
+
+  function projectPlay(name, candidate) {
+    const projected = strategyState(name);
+    const player = projected.players[name];
+    const cards = candidate.refs.map(ref => ref.zone === 'hand'
+      ? player.hand[ref.index]
+      : player.tableSlots?.[ref.index]?.faceUp).filter(Boolean).map(card => ({...card}));
+    removeStrategyRefs(player, candidate.refs);
+    projected.discard.push(...cards);
+
+    // Until the draw pile is empty, a hand is replenished to three cards. The
+    // identities of those new cards are unknown at decision time.
+    while (projected.drawPile.length && player.hand.length < 3) {
+      projected.drawPile.pop();
+      player.hand.push({});
+    }
+    player.knownHand = player.hand.filter(card => typeof card.rank === 'string').map(card => ({...card}));
+
+    const burned = strategyBurns(candidate.rank, cards.length, projected.discard.slice(0, -cards.length));
+    if (burned) {
+      projected.burnPile.push(...projected.discard);
+      projected.discard = [];
+    }
+    strategyFinishTurn(projected, name, candidate.rank, burned);
+    return {projected, burned, cards};
+  }
+
+  function projectPickup(name) {
+    const projected = strategyState(name);
+    const player = projected.players[name];
+    player.hand.push(...projected.discard.map(card => ({...card})));
+    projected.discard = [];
+    player.knownHand = player.hand.filter(card => typeof card.rank === 'string').map(card => ({...card}));
+    strategyFinishTurn(projected, name, null, false);
+    projected.followUpRank = null;
+    return projected;
+  }
+
+  function strategyProbability(projected, name) {
+    const risk = window.ShitHeadPublicRiskV1;
+    if (!risk?.calculateHeuristicShitheadProbability) return null;
+    try {
+      return risk.calculateHeuristicShitheadProbability(projected, {
+        temperature: 18,
+        burden: {hand: 5, faceUp: 7, faceDown: 10},
+        cardQualityWeight: 0.9,
+        pickupBase: 8,
+        pickupLogWeight: 5,
+        futureTurnWeights: [1, 0.3, 0.1],
+        viewerId: name,
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  function strategyRemainingCards(projected) {
+    const belief = window.ShitHeadBeliefStateV1;
+    if (!belief?.remainingRankCounts) return null;
+    const remaining = belief.remainingRankCounts(projected);
+    const total = Object.values(remaining).reduce((sum, count) => sum + count, 0);
+    return {remaining, total};
+  }
+
+  function legalResponseProbability(name, projected) {
+    if (projected.phase !== 'play' || projected.currentPlayer !== name) return 0;
+    const player = projected.players[name];
+    const canPlay = rank => window.ShitHeadRiskV1?.canPlayRank?.(rank, projected) || false;
+    const known = Array.isArray(player?.knownHand) ? player.knownHand : [];
+
+    if ((player?.hand?.length || 0) > 0) {
+      if (known.some(card => canPlay(card.rank))) return 1;
+      const pool = strategyRemainingCards(projected);
+      const hidden = Math.max(0, player.hand.length - known.length);
+      if (!pool || !hidden || !pool.total) return 0;
+      const legal = Object.entries(pool.remaining)
+        .filter(([rank]) => canPlay(rank))
+        .reduce((sum, [, count]) => sum + count, 0);
+      const illegal = Math.max(0, pool.total - legal);
+      let noLegal = 1;
+      for (let index = 0; index < hidden; index += 1) {
+        if (pool.total - index <= 0) break;
+        noLegal *= Math.max(0, (illegal - index) / (pool.total - index));
+      }
+      return Math.max(0, Math.min(1, 1 - noLegal));
+    }
+
+    const slots = player?.tableSlots || [];
+    if (slots.some(slot => slot.faceUp && canPlay(slot.faceUp.rank))) return 1;
+    if (projected.drawPile.length > 0) return 0;
+    if (!slots.some(slot => slot.faceDown && !slot.faceUp)) return 0;
+    const pool = strategyRemainingCards(projected);
+    if (!pool || !pool.total) return 0;
+    const legal = Object.entries(pool.remaining)
+      .filter(([rank]) => canPlay(rank))
+      .reduce((sum, [, count]) => sum + count, 0);
+    return Math.max(0, Math.min(1, legal / pool.total));
+  }
+
+  function strategyScore(name, candidate, projection, view) {
+    const {projected, burned} = projection;
+    const probabilities = strategyProbability(projected, name);
+    const selfRisk = Number(probabilities?.[name]);
+    const next = projected.currentPlayer;
+    const nextRisk = next && next !== name ? Number(probabilities?.[next]) : 0;
+    const response = next && next !== name ? legalResponseProbability(next, projected) : 0;
+    const opponentCards = Object.entries(state.players || {})
+      .filter(([id]) => id !== name)
+      .map(([, player]) => cardTotal(player));
+    const threat = opponentCards.length ? Math.max(0, Math.min(1, (4 - Math.min(...opponentCards)) / 3)) : 0;
+    const late = !view.drawCount || cardTotal(state.players[name]) <= 5 || threat > 0;
+    const baseline = candidate.refs.length * 9 - strength(candidate.rank);
+
+    if (!Number.isFinite(selfRisk)) return baseline + (burned ? 20 : 0);
+
+    let score = baseline * (late ? 0.35 : 0.75);
+    score -= selfRisk * (late ? 1.65 : 0.85);
+    score += nextRisk * (late ? 0.55 : 0.12);
+    score -= response * (late ? 48 + threat * 35 : 12);
+
+    if (burned) score += (late ? 22 : 8) + Math.min(18, view.pile.length * 1.5);
+    if (candidate.rank === '10') {
+      // Tens are the ultimate escape/burn card. Keep them unless the pile or
+      // an imminent opponent makes spending one materially safer.
+      score -= 30;
+      if (view.pile.length >= 5 || threat >= 0.67 || cardTotal(projected.players[name]) === 0) score += 48;
+    }
+    if (candidate.rank === '2') score -= 8;
+    if (projected.followUpRank === candidate.rank) score += 10;
+    if (projected.phase === 'gameover' || cardTotal(projected.players[name]) === 0) score += 100;
+    return score;
+  }
+
   function choose(name, variation = 0) {
     const view = observation(name);
     const groups = new Map();
@@ -133,14 +377,22 @@
         const lowest = STARTING_RANK_ORDER.find(rank => options.some(p => p.rank === rank));
         if (lowest) options = options.filter(p => p.rank === lowest);
       }
-      // A ten is our strongest escape card. Keep it if a cheaper play works,
-      // unless it clears all remaining cards and finishes this player's round.
       const remaining = view.hand.length + view.slots.reduce((n,s) => n + !!s.faceUp + !!s.bottom, 0);
       const winning = options.filter(p => !view.drawCount && p.refs.length === remaining);
       if (winning.length) options = winning;
-      else if (options.some(p => p.rank !== '10')) options = options.filter(p => p.rank !== '10');
-      const unique = [...new Map(options.map(p => [JSON.stringify(p.refs), p])).values()].sort((a,b)=>b.score-a.score);
-      return unique[variation % unique.length];
+      const unique = [...new Map(options.map(p => [JSON.stringify(p.refs), p])).values()];
+      const ranked = unique
+        .map(candidate => {
+          const projection = projectPlay(name, candidate);
+          return {...candidate, strategyScore: strategyScore(name, candidate, projection, view), projection};
+        })
+        .sort((a, b) => b.strategyScore - a.strategyScore);
+      // Only vary among genuinely close decisions. This keeps solo repeatable
+      // while still avoiding a deterministic loop in an unusual position.
+      const top = ranked[0];
+      const close = ranked.filter(candidate => top.strategyScore - candidate.strategyScore < 4);
+      const chosen = close[variation % close.length] || top;
+      return {type: chosen.type, rank: chosen.rank, refs: chosen.refs};
     }
     if (view.followUp) return {type:'finish'};
     const blind = view.slots.map((_,i)=>i).filter(i=>api.canBlind(name,i));
