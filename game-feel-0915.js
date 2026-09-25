@@ -87,6 +87,7 @@
     if (name === state.viewer) return playerSeat;
     const seats = seatingForViewer();
     if (seats.left === name) return opponentLeft;
+    if (seats.top === name) return opponentTop;
     if (seats.right === name) return opponentRight;
     return playerSeat;
   }

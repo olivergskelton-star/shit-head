@@ -17,7 +17,7 @@
   document.querySelector('#buildBadge').after(status);
   const dialog = document.createElement('dialog');
   dialog.id = 'soloDialog';
-  dialog.innerHTML = `<h2>Play solo</h2><p>You against two computer players, using the house rules.</p>
+  dialog.innerHTML = `<h2>Play solo</h2><p>You against three computer players, using the house rules.</p>
     <p id="soloSaveInfo"></p><div class="solo-actions"><button id="soloResume">Resume game</button>
     <button id="soloNew">New solo game</button><button id="soloClose">Back to table</button></div>
     <p class="solo-help">Before travelling, wait for “Ready for offline play”. Save this page to your home screen or bookmark it. Games save on this device.</p>`;
@@ -26,10 +26,11 @@
   const read = () => { try { return JSON.parse(localStorage.getItem(SAVE)); } catch { return null; } };
   function valid(save) {
     const s = save?.state;
-    if (save?.version !== 1 || !s || !PLAYER_NAMES.includes(s.viewer) || !['setup','play','gameover'].includes(s.phase)) return false;
+    const roster = Array.isArray(s?.playerOrder) && s.playerOrder.length ? s.playerOrder : Object.keys(s?.players || {});
+    if (save?.version !== 1 || !s || !roster.includes(s.viewer) || roster.length < 3 || roster.length > 4 || !['setup','play','gameover'].includes(s.phase)) return false;
     if (!Array.isArray(s.drawPile) || !Array.isArray(s.discard) || !Array.isArray(s.burnPile)) return false;
     const cards = [...s.drawPile, ...s.discard, ...s.burnPile];
-    for (const name of PLAYER_NAMES) {
+    for (const name of roster) {
       const p = s.players?.[name];
       if (!p || !Array.isArray(p.hand) || !Array.isArray(p.faceUp) || !Array.isArray(p.faceDown)) return false;
       cards.push(...p.hand);
@@ -78,10 +79,11 @@
     visited.clear();
     writing = true;
     enter();
+    setPlayerRoster([...DEFAULT_PLAYER_NAMES, 'CPU 3']);
     newGameBtn.click(); // Run every existing deal/reset listener in its normal order.
     state.scores = Object.fromEntries(PLAYER_NAMES.map(n => [n, 0]));
     arrangeCPUs();
-    state.lastMessage = 'Solo game — arrange your cards, then press READY. Both computer players are ready.';
+    state.lastMessage = 'Solo game — arrange your cards, then press READY. The three computer players are ready.';
     writing = false;
     dialog.close(); render();
   }
@@ -92,6 +94,7 @@
     // Remove optional state from the previous deal before restoring this one.
     for (const key of Object.keys(state)) delete state[key];
     Object.assign(state, stored.state);
+    setPlayerRoster(state.playerOrder || Object.keys(state.players || {}));
     state.selected = []; state.selectedRefs = []; state.setupSelection = null;
     viewerSelect.value = state.viewer; viewerSelect.disabled = true;
     themeSelect.value = state.theme; document.body.dataset.theme = state.theme;
@@ -430,7 +433,9 @@
     viewerSelect.disabled = true;
     const hint = playerSeat.querySelector('.setup-hint');
     if (hint && !state.setupReady[state.viewer]) hint.textContent = 'Swap a hand card with a face-up card, then press READY.';
-    for (const [element,name] of [[opponentLeft,seatingForViewer().left],[opponentRight,seatingForViewer().right]]) {
+    const seats = seatingForViewer();
+    for (const [element,name] of [[opponentLeft,seats.left],[opponentTop,seats.top],[opponentRight,seats.right]]) {
+      if (!element || !name) continue;
       let label = element.querySelector('.cpu-label');
       if (!label) { label=document.createElement('span'); label.className='cpu-label'; element.append(label); }
       const notepadName = document.querySelector(`.player-notepad[data-player="${name}"] .notepad-name`);

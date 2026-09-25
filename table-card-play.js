@@ -759,6 +759,7 @@
     decorateSelfTable();
     const seats = seatingForViewer();
     decorateOpponentTable(opponentLeft, seats.left);
+    decorateOpponentTable(opponentTop, seats.top);
     decorateOpponentTable(opponentRight, seats.right);
 
     if (state.phase === 'gameover') {

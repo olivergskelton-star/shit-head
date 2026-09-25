@@ -40,6 +40,13 @@
     transform-origin: right top !important;
   }
 
+  .seat-top .player-notepad {
+    left: 50% !important;
+    top: -18px !important;
+    transform: translateX(-50%) rotate(1deg) scale(.8) !important;
+    transform-origin: center top !important;
+  }
+
   /* The local pad lives in the open lower-left felt, above the setup action strip
      and clear of the held hand. */
   .seat-player .player-notepad {
@@ -54,5 +61,6 @@
   .player-notepad { width: 108px !important; }
   .seat-left .player-notepad { left: -4px !important; }
   .seat-right .player-notepad { right: -2px !important; }
+  .seat-top .player-notepad { left: 50% !important; }
   .seat-player .player-notepad { left: 1% !important; bottom: 35% !important; }
 }
