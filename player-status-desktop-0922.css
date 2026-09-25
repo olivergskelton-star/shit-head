@@ -31,6 +31,12 @@
     transform: rotate(5deg) !important;
   }
 
+  .seat-top .player-notepad {
+    left: 50% !important;
+    top: -8px !important;
+    transform: translateX(-50%) rotate(1deg) !important;
+  }
+
   .seat-player .player-notepad {
     left: 4% !important;
     bottom: 19% !important;
@@ -48,5 +54,6 @@
   .notepad-name { font-size: .85rem !important; }
   .seat-left .player-notepad { left: -86px !important; top: -24px !important; }
   .seat-right .player-notepad { right: -86px !important; top: -24px !important; }
+  .seat-top .player-notepad { left: 50% !important; top: -5px !important; transform: translateX(-50%) rotate(1deg) !important; }
   .seat-player .player-notepad { left: 3.5% !important; bottom: 18% !important; }
 }

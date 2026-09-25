@@ -10,8 +10,8 @@ test('solo starts, CPUs play, all assets survive offline reload and save resumes
   await page.goto('/index.html');
   await page.locator('#soloPlay').click();
   await page.locator('#soloNew').click();
-  await expect(page.locator('.cpu-label')).toHaveCount(2);
-  expect(await page.evaluate(()=>state.setupReady.Dan && state.setupReady.Chris)).toBe(true);
+  await expect(page.locator('.cpu-label')).toHaveCount(3);
+  expect(await page.evaluate(()=>state.setupReady.Dan && state.setupReady.Chris && state.setupReady['CPU 3'])).toBe(true);
   await expect(page.locator('#offlineStatus')).toHaveText('Ready for offline play',{timeout:30000});
   await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
   await page.screenshot({path:'/tmp/solo-desktop.png'});

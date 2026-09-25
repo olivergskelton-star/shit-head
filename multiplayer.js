@@ -1,13 +1,17 @@
 (() => {
+  const ROOM_SEATS = ["Oliver", "Dan", "Chris", "Player 4"];
   const MP = {
     peer: null,
     role: "local",
     roomCode: "",
     player: "",
+    displayName: "",
+    seatToken: "",
     hostConnection: null,
     connections: new Map(),
     claimedPlayers: new Set(),
     presentPlayers: new Set(),
+    seatTokens: new Map(),
     suppressPublish: false,
     publishTimer: null,
   };
@@ -24,11 +28,19 @@
   }
   function applySnapshot(snap) {
     if (!snap || typeof snap !== "object") return;
-    const viewer = state.viewer;
+    const roster = Array.isArray(snap.playerOrder) && snap.playerOrder.length
+      ? snap.playerOrder
+      : Object.keys(snap.players || {});
+    if (roster.length) setPlayerRoster(roster);
+    // A client is permanently tied to the anonymous seat issued by the host.
+    // Snapshots intentionally omit `viewer`, so never let a default/local viewer
+    // leak back in when a four-seat room is synchronised.
+    const viewer = MP.role === "client" && MP.player ? MP.player : state.viewer;
     const setupSelection = state.setupSelection;
     MP.suppressPublish = true;
     Object.keys(snap).forEach((key) => { state[key] = clone(snap[key]); });
     state.viewer = viewer;
+    viewerSelect.value = viewer;
     state.selected = [];
     state.setupSelection = state.phase === "setup" ? setupSelection : null;
     if (state.theme) {
@@ -74,7 +86,10 @@
   }
 
   function setViewer(player) {
-    if (!PLAYER_NAMES.includes(player)) return;
+    if (!PLAYER_NAMES.includes(player)) {
+      if (!ROOM_SEATS.includes(player)) return;
+      setPlayerRoster([...PLAYER_NAMES, player]);
+    }
     state.viewer = player;
     viewerSelect.value = player;
     viewerSelect.disabled = true;
@@ -88,6 +103,28 @@
     return out;
   }
   function peerIdForRoom(code) { return `shithead-${code.toLowerCase()}`; }
+  function cleanDisplayName(value, fallback = "Player") {
+    return String(value || fallback).trim().replace(/\s+/g, " ").slice(0, 24) || fallback;
+  }
+  function randomToken() {
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let out = "";
+    for (let i = 0; i < 8; i += 1) out += alphabet[Math.floor(Math.random() * alphabet.length)];
+    return out;
+  }
+  function rejoinLink(code, pin) {
+    if (!code || !pin) return "";
+    return `${location.origin}${location.pathname}?room=${encodeURIComponent(code)}&pin=${encodeURIComponent(pin)}`;
+  }
+  function preferredSeat() {
+    return ROOM_SEATS.includes(playerSelect.value) ? playerSelect.value : "";
+  }
+  function enteredDisplayName() {
+    return cleanDisplayName(displayNameInput.value || playerSelect.value || "Player");
+  }
+  function enteredPin() {
+    return String(rejoinPinInput.value || "").trim().toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 8);
+  }
 
   const trigger = document.createElement("button");
   trigger.type = "button";
@@ -106,13 +143,19 @@
   dialog.innerHTML = `
     <section class="multiplayer-sheet">
       <h2>Play together</h2>
-      <p>Create a table in one browser, then give the six-character room code to the other two players.</p>
+      <p>Create a table in one browser, then share the room code with up to three other players.</p>
       <div class="multiplayer-grid">
-        <label class="multiplayer-field">You are
-          <select id="mpPlayer">${PLAYER_NAMES.map((name) => `<option value="${name}">${name}</option>`).join("")}</select>
+        <label class="multiplayer-field">Your display name
+          <input id="mpDisplayName" maxlength="24" autocomplete="nickname" spellcheck="false" placeholder="e.g. Oliver" />
+        </label>
+        <label class="multiplayer-field">Seat preference <span class="field-note">optional</span>
+          <select id="mpPlayer"><option value="">Any open seat</option>${ROOM_SEATS.map((name) => `<option value="${name}">${name}</option>`).join("")}</select>
         </label>
         <label class="multiplayer-field">Room code
           <input id="mpRoomCode" maxlength="6" autocomplete="off" spellcheck="false" placeholder="e.g. WINE42" />
+        </label>
+        <label class="multiplayer-field">Rejoin PIN <span class="field-note">optional</span>
+          <input id="mpRejoinPin" maxlength="8" autocomplete="one-time-code" spellcheck="false" placeholder="For another device" />
         </label>
         <p id="mpError" class="multiplayer-error"></p>
         <div class="multiplayer-actions">
@@ -125,18 +168,38 @@
         <div>ROOM</div>
         <div id="mpRoomDisplay" class="room-code"></div>
         <p id="mpRoomStatus" class="room-status"></p>
+        <p id="mpRejoinInfo" class="room-rejoin-info"></p>
         <div id="mpPlayers" class="room-players"></div>
       </div>
     </section>`;
   document.body.append(dialog);
 
   const playerSelect = dialog.querySelector("#mpPlayer");
+  const displayNameInput = dialog.querySelector("#mpDisplayName");
   const roomInput = dialog.querySelector("#mpRoomCode");
+  const rejoinPinInput = dialog.querySelector("#mpRejoinPin");
   const errorText = dialog.querySelector("#mpError");
   const roomCard = dialog.querySelector("#mpRoomCard");
   const roomDisplay = dialog.querySelector("#mpRoomDisplay");
   const roomStatus = dialog.querySelector("#mpRoomStatus");
+  const rejoinInfo = dialog.querySelector("#mpRejoinInfo");
   const playersEl = dialog.querySelector("#mpPlayers");
+
+  // A rejoin link carries no account credentials; it only pre-fills the room
+  // code and seat PIN that the host already issued for this anonymous seat.
+  const urlParams = new URLSearchParams(location.search);
+  const linkedRoom = String(urlParams.get("room") || "").toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6);
+  const linkedPin = String(urlParams.get("pin") || "").toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 8);
+  if (linkedRoom) roomInput.value = linkedRoom;
+  if (linkedPin) rejoinPinInput.value = linkedPin;
+  if (linkedRoom && !displayNameInput.value) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`shithead-rejoin-${linkedRoom}`) || "null");
+      if (saved?.displayName) displayNameInput.value = saved.displayName;
+      if (!rejoinPinInput.value && saved?.pin) rejoinPinInput.value = saved.pin;
+      if (saved?.seat && ROOM_SEATS.includes(saved.seat)) playerSelect.value = saved.seat;
+    } catch (_) {}
+  }
 
   function showError(message = "") { errorText.textContent = message; }
 
@@ -149,7 +212,7 @@
   function updateStartUi() {
     const inLobby = MP.role !== "local" && state.phase === "lobby";
     const connected = onlinePlayers();
-    const allThree = PLAYER_NAMES.every((name) => connected.has(name));
+    const canStart = MP.role === "host" && connected.size >= 1 && connected.size <= ROOM_SEATS.length;
 
     startButton.classList.toggle("multiplayer-hidden", !inLobby);
     if (!inLobby) {
@@ -160,8 +223,8 @@
 
     newGameBtn.disabled = true;
     if (MP.role === "host") {
-      startButton.disabled = !allThree;
-      startButton.textContent = allThree ? "START GAME" : `WAITING ${connected.size}/3`;
+      startButton.disabled = !canStart;
+      startButton.textContent = canStart ? `START GAME · ${connected.size} PLAYER${connected.size === 1 ? "" : "S"}` : "WAITING FOR HOST";
     } else {
       startButton.disabled = true;
       startButton.textContent = "WAITING FOR HOST";
@@ -176,24 +239,39 @@
     roomDisplay.textContent = MP.roomCode;
 
     const connected = onlinePlayers();
-    playersEl.replaceChildren(...PLAYER_NAMES.map((name) => {
+    playersEl.replaceChildren(...ROOM_SEATS.map((name) => {
       const pill = document.createElement("span");
       pill.className = `room-player${connected.has(name) ? " connected" : ""}`;
-      pill.textContent = connected.has(name) ? `${name} ✓` : name;
+      const label = publicName(name);
+      pill.textContent = connected.has(name) ? `${label} ✓` : "Open seat";
       return pill;
     }));
 
     if (MP.role === "host") {
       roomStatus.textContent = state.phase === "lobby"
-        ? connected.size === 3
-          ? "Everyone is in. Close this window and press START GAME."
-          : `Waiting for players — ${connected.size}/3 connected.`
-        : `${MP.player} is hosting. Keep this browser open while you play.`;
+        ? connected.size >= 1
+          ? `${connected.size} player${connected.size === 1 ? "" : "s"} connected. Add more or start the game.`
+          : "Waiting for the first player."
+        : `${publicName(MP.player)} is hosting. Keep this browser open while you play.`;
     } else if (MP.role === "client") {
       roomStatus.textContent = state.phase === "lobby"
-        ? `Connected as ${MP.player}. Waiting for the host to start.`
-        : `Connected as ${MP.player}.`;
+        ? `Connected as ${publicName(MP.player)}. Waiting for the host to start.`
+        : `Connected as ${publicName(MP.player)}.`;
     } else roomStatus.textContent = "";
+
+    if (rejoinInfo) {
+      rejoinInfo.replaceChildren();
+      if (MP.seatToken) {
+        const copy = document.createElement("span");
+        copy.textContent = `Your rejoin PIN: ${MP.seatToken} · use it with this room code on another device. `;
+        const link = document.createElement("a");
+        link.href = rejoinLink(MP.roomCode, MP.seatToken);
+        link.textContent = "Open your rejoin link";
+        link.target = "_blank";
+        link.rel = "noopener";
+        rejoinInfo.append(copy, link);
+      }
+    }
 
     updateStartUi();
   }
@@ -216,7 +294,7 @@
     state.startingPlayer = null;
     state.currentPlayer = null;
     state.selected = [];
-    state.lastMessage = "Online table ready — waiting for all three players.";
+    state.lastMessage = "Online table ready — add players or start when ready.";
     if (typeof tickerReset === "function") tickerReset();
     MP.suppressPublish = false;
     render();
@@ -225,13 +303,16 @@
   function startOnlineGame() {
     if (MP.role !== "host" || state.phase !== "lobby") return;
     const connected = onlinePlayers();
-    if (!PLAYER_NAMES.every((name) => connected.has(name))) {
-      state.lastMessage = "All three players need to be connected before the deal starts.";
+    const activePlayers = ROOM_SEATS.filter((name) => connected.has(name));
+    if (!activePlayers.length) {
+      state.lastMessage = "At least one player must be connected before the deal starts.";
       render();
       return;
     }
 
     MP.suppressPublish = true;
+    setPlayerRoster(activePlayers);
+    state.scores = Object.fromEntries(activePlayers.map((name) => [name, 0]));
     dealNewGame();
     if (typeof resetSetupPhase === "function") resetSetupPhase();
     state.phase = "setup";
@@ -253,9 +334,13 @@
     MP.connections.clear();
     MP.claimedPlayers.clear();
     MP.presentPlayers.clear();
+    MP.seatTokens.clear();
     MP.role = "local";
     MP.roomCode = "";
     MP.player = "";
+    MP.displayName = "";
+    MP.seatToken = "";
+    setPlayerRoster(DEFAULT_PLAYER_NAMES);
     viewerSelect.disabled = false;
     newGameBtn.disabled = false;
     startButton.classList.add("multiplayer-hidden");
@@ -265,7 +350,7 @@
   function publishPresence() {
     const players = [...MP.claimedPlayers];
     MP.presentPlayers = new Set(players);
-    broadcast({ type: "presence", players });
+    broadcast({ type: "presence", players, displayNames: state.displayNames });
     updateRoomUi();
   }
 
@@ -385,15 +470,32 @@
     conn.on("data", (data) => {
       if (!data || typeof data !== "object") return;
       if (data.type === "join") {
-        const requested = data.player;
-        if (!PLAYER_NAMES.includes(requested) || MP.claimedPlayers.has(requested)) {
-          send(conn, { type: "rejected", message: `${requested || "That seat"} is already taken.` });
+        const requested = ROOM_SEATS.includes(data.player) ? data.player : "";
+        const suppliedPin = String(data.rejoinPin || "").toUpperCase();
+        const tokenSeat = ROOM_SEATS.find((seat) => MP.seatTokens.get(seat) === suppliedPin);
+        const requestedSeat = tokenSeat || requested || ROOM_SEATS.find((seat) => !MP.claimedPlayers.has(seat));
+        const reconnecting = !!tokenSeat;
+        if (!requestedSeat || MP.claimedPlayers.has(requestedSeat) || (!reconnecting && state.phase !== "lobby")) {
+          send(conn, { type: "rejected", message: reconnecting ? "That seat is already connected." : "The game has started. Use your rejoin PIN to reclaim your seat." });
           return;
         }
-        MP.connections.get(conn).player = requested;
-        MP.claimedPlayers.add(requested);
+        const pin = MP.seatTokens.get(requestedSeat) || randomToken();
+        MP.seatTokens.set(requestedSeat, pin);
+        const displayName = cleanDisplayName(data.displayName, state.displayNames?.[requestedSeat] || requestedSeat);
+        MP.connections.get(conn).player = requestedSeat;
+        MP.claimedPlayers.add(requestedSeat);
+        state.displayNames[requestedSeat] = displayName;
         MP.presentPlayers = new Set(MP.claimedPlayers);
-        send(conn, { type: "welcome", roomCode: MP.roomCode, player: requested, players: [...MP.claimedPlayers], state: snapshotState() });
+        send(conn, {
+          type: "welcome",
+          roomCode: MP.roomCode,
+          player: requestedSeat,
+          displayName,
+          rejoinPin: pin,
+          players: [...MP.claimedPlayers],
+          displayNames: state.displayNames,
+          state: snapshotState(),
+        });
         publishPresence();
         return;
       }
@@ -401,7 +503,7 @@
       const meta = MP.connections.get(conn);
       if (!meta?.player || meta.player !== data.player) return;
 
-      if (data.type === "action") {
+        if (data.type === "action") {
         MP.suppressPublish = true;
         let accepted = false;
         try {
@@ -435,15 +537,22 @@
     showError();
     if (typeof Peer === "undefined") { showError("Online library did not load. Check your internet connection and refresh."); return; }
     resetOnlineState();
-    const player = playerSelect.value;
+    const player = preferredSeat() || ROOM_SEATS[0];
     const code = randomRoomCode();
     MP.role = "host";
     MP.roomCode = code;
     MP.player = player;
+    MP.displayName = enteredDisplayName();
+    MP.seatToken = randomToken();
+    MP.seatTokens.set(player, MP.seatToken);
     MP.claimedPlayers.add(player);
     MP.presentPlayers = new Set([player]);
     setViewer(player);
     enterOnlineLobby();
+    state.displayNames[player] = MP.displayName;
+    try {
+      localStorage.setItem(`shithead-rejoin-${code}`, JSON.stringify({ roomCode: code, pin: MP.seatToken, displayName: MP.displayName, seat: MP.player }));
+    } catch (_) {}
     updateRoomUi();
     MP.peer = new Peer(peerIdForRoom(code));
     MP.peer.on("open", () => {
@@ -464,28 +573,43 @@
     resetOnlineState();
     MP.role = "client";
     MP.roomCode = code;
-    MP.player = playerSelect.value;
-    MP.presentPlayers = new Set([MP.player]);
-    setViewer(MP.player);
+    MP.displayName = enteredDisplayName();
+    MP.seatToken = enteredPin();
+    MP.player = preferredSeat();
+    MP.presentPlayers = new Set();
     newGameBtn.disabled = true;
     updateRoomUi();
     MP.peer = new Peer();
     MP.peer.on("open", () => {
       const conn = MP.peer.connect(peerIdForRoom(code), { reliable: true });
       MP.hostConnection = conn;
-      conn.on("open", () => send(conn, { type: "join", player: MP.player }));
+      conn.on("open", () => send(conn, {
+        type: "join",
+        player: MP.player,
+        displayName: MP.displayName,
+        rejoinPin: MP.seatToken,
+      }));
       conn.on("data", (data) => {
         if (!data || typeof data !== "object") return;
         if (data.type === "welcome") {
           setViewer(data.player);
+          MP.player = data.player;
+          MP.displayName = data.displayName || MP.displayName;
+          MP.seatToken = data.rejoinPin || MP.seatToken;
+          state.displayNames[data.player] = MP.displayName;
           MP.presentPlayers = new Set(data.players || [data.player]);
+          if (data.displayNames) state.displayNames = clone(data.displayNames);
           applySnapshot(data.state);
+          try {
+            localStorage.setItem(`shithead-rejoin-${data.roomCode}`, JSON.stringify({ roomCode: data.roomCode, pin: MP.seatToken, displayName: MP.displayName, seat: MP.player }));
+          } catch (_) {}
           updateRoomUi();
           dialog.close();
         } else if (data.type === "state") {
           applySnapshot(data.state);
         } else if (data.type === "presence") {
           MP.presentPlayers = new Set(data.players || []);
+          if (data.displayNames) state.displayNames = clone(data.displayNames);
           updateRoomUi();
         } else if (data.type === "action-result" && data.ok === false) {
           statusText.textContent = "The host rejected that action. The table has been resynchronised.";
@@ -515,7 +639,7 @@
     renderBeforeMultiplayer();
     if (MP.role !== "local" && state.phase === "lobby") {
       statusText.textContent = MP.role === "host"
-        ? "Online lobby — wait for all three players, then press START GAME."
+        ? "Online lobby — add players or press START GAME when ready."
         : "Online lobby — waiting for the host to start the deal.";
     }
     updateStartUi();

@@ -53,7 +53,7 @@
 
     const primary = actions.querySelector('.room-lobby-primary');
     const players = Array.isArray(status.players) ? status.players : [];
-    const allThree = ['Oliver', 'Dan', 'Chris'].every((name) => players.includes(name));
+    const canStart = status.role === 'host' && players.length >= 1;
     const inLobby = typeof state !== 'undefined' && state.phase === 'lobby';
 
     if (!inLobby) {
@@ -63,10 +63,10 @@
 
     setHidden(primary, false);
     if (status.role === 'host') {
-      if (primary.disabled === allThree) primary.disabled = !allThree;
-      setText(primary, allThree ? 'START GAME' : `WAITING ${players.length}/3`);
+      primary.disabled = !canStart;
+      setText(primary, canStart ? `START GAME · ${players.length} PLAYER${players.length === 1 ? '' : 'S'}` : 'WAITING FOR HOST');
       primary.onclick = () => {
-        if (!allThree) return;
+        if (!canStart) return;
         mp.startGame();
         dialog.close();
       };

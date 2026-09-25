@@ -10,6 +10,7 @@ test('lowest hand opens and CPUs preserve tens without blocking an escape or fin
     state.players.Oliver.hand=[c('4'),c('A')];
     state.players.Dan.hand=[c('5'),c('10')];
     state.players.Chris.hand=[c('6'),c('K')];
+    state.players['CPU 3'].hand=[c('Q'),c('J')];
     markSetupReady(state.viewer);
     const soleFour=state.startingPlayer;
     state.players.Dan.hand=[c('4','♥'),c('5'),c('5','♦'),c('10')];

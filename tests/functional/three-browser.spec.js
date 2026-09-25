@@ -126,7 +126,7 @@ test('three real pages stay in sync through drinks, SORT, READY, PLAY and PICK U
   const lobbyStart = oliver.locator('.room-lobby-primary');
   await expect(lobbyStart).toBeVisible();
   await expect(lobbyStart).toBeEnabled();
-  await expect(lobbyStart).toHaveText('START GAME');
+  await expect(lobbyStart).toHaveText('START GAME · 3 PLAYERS');
   await lobbyStart.click();
   await Promise.all(pages.map((page) => page.waitForFunction(() => state.phase === 'setup')));
   await expectAllSynced(pages);

@@ -1,6 +1,9 @@
 // Final table-state UI layer: compact opponent hands and authoritative Pile label/count.
 
 function renderCompactOpponent(container, name) {
+  if (!container) return;
+  container.hidden = !name || !state.players?.[name];
+  if (!name || !state.players?.[name]) { container.replaceChildren(); return; }
   const player = state.players[name];
   container.replaceChildren();
   container.classList.toggle("active", state.currentPlayer === name);

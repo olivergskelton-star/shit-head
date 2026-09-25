@@ -242,10 +242,11 @@
 
   function decoratePlayerNotepads() {
     const probabilities = calibratedRisk();
-    [opponentLeft, opponentRight, playerSeat].forEach((seat) => seat?.querySelector('.player-notepad')?.remove());
+    [opponentLeft, opponentTop, opponentRight, playerSeat].forEach((seat) => seat?.querySelector('.player-notepad')?.remove());
     const seats = seatingForViewer();
-    opponentLeft?.append(makeNotepad(seats.left, probabilities));
-    opponentRight?.append(makeNotepad(seats.right, probabilities));
+    if (seats.left) opponentLeft?.append(makeNotepad(seats.left, probabilities));
+    if (seats.top) opponentTop?.append(makeNotepad(seats.top, probabilities));
+    if (seats.right) opponentRight?.append(makeNotepad(seats.right, probabilities));
     playerSeat?.append(makeNotepad(seats.self, probabilities));
   }
 

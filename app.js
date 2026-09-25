@@ -1,4 +1,6 @@
-const PLAYER_NAMES = ["Oliver", "Dan", "Chris"];
+let PLAYER_NAMES = ["Oliver", "Dan", "Chris"];
+const DEFAULT_PLAYER_NAMES = Object.freeze(["Oliver", "Dan", "Chris"]);
+const MAX_PLAYER_COUNT = 4;
 const SUITS = ["♠", "♥", "♦", "♣"];
 const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 const NORMAL_ORDER = ["4", "5", "6", "7", "8", "9", "J", "Q", "K", "A"];
@@ -24,12 +26,14 @@ const state = {
   players: {},
   selected: [],
   lastMessage: "",
+  playerOrder: [...PLAYER_NAMES],
   displayNames: loadDisplayNames(),
 };
 
 const viewerSelect = document.querySelector("#viewerSelect");
 const themeSelect = document.querySelector("#themeSelect");
 const opponentLeft = document.querySelector("#opponentLeft");
+const opponentTop = document.querySelector("#opponentTop");
 const opponentRight = document.querySelector("#opponentRight");
 const playerSeat = document.querySelector("#playerSeat");
 const discardPile = document.querySelector("#discardPile");
@@ -51,11 +55,36 @@ function cardText(card) { return `${card.rank}${card.suit}`; }
 function isRed(card) { return card.suit === "♥" || card.suit === "♦"; }
 function publicName(name) { return state.displayNames[name] || name; }
 
+function updateViewerOptions() {
+  if (!viewerSelect) return;
+  const selected = state.viewer;
+  viewerSelect.replaceChildren(...PLAYER_NAMES.map((name) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = publicName(name);
+    return option;
+  }));
+  state.viewer = PLAYER_NAMES.includes(selected) ? selected : PLAYER_NAMES[0];
+  viewerSelect.value = state.viewer;
+}
+
+function setPlayerRoster(names) {
+  const roster = [...new Set((names || []).filter((name) => typeof name === "string" && name.trim()))].slice(0, MAX_PLAYER_COUNT);
+  if (!roster.length) return false;
+  PLAYER_NAMES = roster;
+  state.playerOrder = [...roster];
+  state.displayNames ||= {};
+  roster.forEach((name) => { if (!state.displayNames[name]) state.displayNames[name] = name; });
+  updateViewerOptions();
+  return true;
+}
+
 function dealNewGame() {
   const deck = shuffle(buildDeck());
   state.discard = [];
   state.selected = [];
   state.lastMessage = "";
+  state.playerOrder = [...PLAYER_NAMES];
   state.currentPlayer = PLAYER_NAMES[Math.floor(Math.random() * PLAYER_NAMES.length)];
   state.players = Object.fromEntries(PLAYER_NAMES.map((name) => [name, { faceDown: [], faceUp: [], hand: [] }]));
   for (let round = 0; round < 3; round += 1) PLAYER_NAMES.forEach((name) => state.players[name].faceDown.push(deck.pop()));
@@ -67,7 +96,18 @@ function dealNewGame() {
 
 function seatingForViewer() {
   const i = PLAYER_NAMES.indexOf(state.viewer);
-  return { self: PLAYER_NAMES[i], left: PLAYER_NAMES[(i + 1) % 3], right: PLAYER_NAMES[(i + 2) % 3] };
+  const self = PLAYER_NAMES[i >= 0 ? i : 0];
+  const others = PLAYER_NAMES.filter((name) => name !== self);
+  const hasTopSeat = others.length > 2;
+  return {
+    self,
+    left: others[0] || null,
+    // Preserve the established two-opponent left/right table for three seats;
+    // add the top seat only when a fourth player is actually present.
+    top: hasTopSeat ? others[1] : null,
+    right: hasTopSeat ? others[2] : (others[1] || null),
+    opponents: others,
+  };
 }
 
 function makeCard(card, { small = false, button = false, selected = false, onClick } = {}) {
@@ -99,7 +139,7 @@ function editDisplayName(name) {
 }
 
 function makeBeerMat(name, extraClass = "", editable = false) {
-  const profile = PLAYER_PROFILE[name];
+  const profile = PLAYER_PROFILE[name] || { score: 0, drink: "Wine", icon: "🍷" };
   const displayName = publicName(name);
   const mat = document.createElement(editable ? "button" : "div");
   if (editable) mat.type = "button";
@@ -121,6 +161,9 @@ function makeBeerMat(name, extraClass = "", editable = false) {
 }
 
 function renderOpponent(container, name) {
+  if (!container) return;
+  container.hidden = !name || !state.players?.[name];
+  if (!name || !state.players?.[name]) { container.replaceChildren(); return; }
   const player = state.players[name];
   container.replaceChildren();
   container.classList.toggle("active", state.currentPlayer === name);
@@ -288,6 +331,7 @@ function renderDiscard() {
 function render() {
   const seats = seatingForViewer();
   renderOpponent(opponentLeft, seats.left);
+  renderOpponent(opponentTop, seats.top);
   renderOpponent(opponentRight, seats.right);
   renderSelf(seats.self);
   renderDiscard();
@@ -299,12 +343,7 @@ function render() {
   }
 }
 
-PLAYER_NAMES.forEach((name) => {
-  const option = document.createElement("option");
-  option.value = name;
-  option.textContent = name;
-  viewerSelect.append(option);
-});
+updateViewerOptions();
 viewerSelect.value = state.viewer;
 themeSelect.addEventListener("change", () => { state.theme = themeSelect.value; document.body.dataset.theme = state.theme; });
 viewerSelect.addEventListener("change", () => { state.viewer = viewerSelect.value; state.selected = []; state.lastMessage = ""; render(); });
