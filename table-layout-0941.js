@@ -104,6 +104,9 @@
   // Keep the start screen as the destination when a setup sheet is cancelled.
   start.addEventListener('cancel', event => event.preventDefault());
   document.addEventListener('close', () => {
+    if (atStart && window.ShitHeadSolo?.active) {
+      atStart = false; offeredRound = false; updateRound();
+    }
     if (atStart && !document.querySelector('dialog[open]')) start.showModal();
   }, true);
   function updateRound() {

@@ -53,7 +53,10 @@ test('mobile round popup redeals with scores, quits to mode selection, and drink
   await page.locator('#startSolo').click();
   await expect(page.locator('#soloDialog')).toBeVisible();
   await expect(page.locator('#soloResume')).toBeVisible();
-  await page.locator('#soloClose').click();
+  await page.locator('#soloResume').click();
+  await expect(page.locator('#roundOverDialog')).toBeVisible();
+  await expect(page.locator('#gameStartDialog')).not.toBeVisible();
+  await page.locator('#roundQuit').click();
   await expect(page.locator('#gameStartDialog')).toBeVisible();
   await page.locator('#startOnline').click();
   await expect(page.locator('#mpCreate')).toBeVisible();
