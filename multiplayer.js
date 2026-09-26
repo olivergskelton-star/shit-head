@@ -85,6 +85,27 @@
     return true;
   }
 
+  // Reactions are fixed, transient messages, never game-state proposals. The
+  // host binds each one to the authenticated connection's seat and rate limits it.
+  const reactionTimes = new Map();
+  function acceptReaction(player, reaction) {
+    if (!['play', 'gameover'].includes(state.phase) || !PLAYER_NAMES.includes(player)
+      || !window.ShitHeadTableSocial?.isReaction(reaction)) return false;
+    const now = Date.now();
+    if (now - (reactionTimes.get(player) || 0) < 2000) return false;
+    reactionTimes.set(player, now);
+    window.ShitHeadTableSocial.receiveReaction(player, reaction);
+    broadcast({ type: 'reaction', player, reaction });
+    return true;
+  }
+  function sendReaction(reaction) {
+    if (!window.ShitHeadTableSocial?.isReaction(reaction)) return false;
+    if (MP.role === 'host') return acceptReaction(MP.player, reaction);
+    if (MP.role !== 'client' || !MP.hostConnection?.open) return false;
+    send(MP.hostConnection, { type: 'reaction', player: MP.player, reaction });
+    return true;
+  }
+
   function setViewer(player) {
     if (!PLAYER_NAMES.includes(player)) {
       if (!ROOM_SEATS.includes(player)) return;
@@ -292,6 +313,7 @@
     }
 
     updateStartUi();
+    window.ShitHeadTableSocial?.refresh();
   }
 
   function blankPlayers() {
@@ -344,6 +366,8 @@
   }
 
   function resetOnlineState() {
+    reactionTimes.clear();
+    window.ShitHeadTableSocial?.clear();
     try { MP.hostConnection?.close(); } catch (_) {}
     MP.connections.forEach((_, conn) => { try { conn.close(); } catch (_) {} });
     try { MP.peer?.destroy(); } catch (_) {}
@@ -521,6 +545,11 @@
       const meta = MP.connections.get(conn);
       if (!meta?.player || meta.player !== data.player) return;
 
+      if (data.type === 'reaction') {
+        acceptReaction(meta.player, data.reaction);
+        return;
+      }
+
         if (data.type === "action") {
         MP.suppressPublish = true;
         let accepted = false;
@@ -625,6 +654,8 @@
           dialog.close();
         } else if (data.type === "state") {
           applySnapshot(data.state);
+        } else if (data.type === 'reaction') {
+          window.ShitHeadTableSocial?.receiveReaction(data.player, data.reaction);
         } else if (data.type === "presence") {
           MP.presentPlayers = new Set(data.players || []);
           if (data.displayNames) state.displayNames = clone(data.displayNames);
@@ -667,6 +698,7 @@
   window.ShitHeadMultiplayer = {
     publishState,
     sendAction,
+    sendReaction,
     disconnect: resetOnlineState,
     startGame: startOnlineGame,
     get status() { return { role: MP.role, roomCode: MP.roomCode, player: MP.player, players: [...onlinePlayers()] }; },

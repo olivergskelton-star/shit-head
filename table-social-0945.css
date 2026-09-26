@@ -1,0 +1,24 @@
+.mobile-turn-status[hidden]{display:none!important}
+#table .player-notepad{overflow:visible!important}
+#table .player-notepad.turn-highlight{outline:3px solid #f5c451!important;outline-offset:3px!important;box-shadow:0 0 0 7px #f5c45135,0 4px 20px #0006!important}
+#table .turn-highlight .notepad-name{background:#f5c45160!important;border-radius:4px}
+.seat-turn-tag{position:absolute;right:4px;top:-15px;padding:2px 6px;background:#f5c451;color:#20160b;border-radius:5px;font:800 12px/1.25 system-ui;letter-spacing:.03em;white-space:nowrap}
+.seat-callout{position:absolute;left:50%;top:calc(100% + 5px);transform:translateX(-50%);z-index:20;width:max-content;max-width:180px;padding:8px 10px;background:#172e25;color:#fff4df;border:1px solid #f5c451;border-radius:14px;box-shadow:0 4px 16px #0007;font:700 14px/1.3 system-ui;text-align:center;pointer-events:none}
+#table .player-notepad:has(.seat-callout){z-index:40!important}
+#seatReact{position:absolute;right:0;bottom:0;min-height:44px;padding:8px 14px;border:1px solid #c9aa70;border-radius:12px;background:#172e25;color:#fff4df;font:600 14px/1.3 system-ui;cursor:pointer}
+#seatReact[hidden]{display:none!important}
+#seatReact:disabled{opacity:.55}
+.seat-reactions{width:min(380px,calc(100vw - 24px));box-sizing:border-box;padding:20px;background:#172e25;color:#fff4df;border:1px solid #c9aa70;border-radius:20px}
+.seat-reactions::backdrop{background:#0008}
+.seat-reactions h2{margin:0 0 16px;font:700 20px/1.4 system-ui}
+.reaction-options{display:flex;justify-content:space-between;gap:4px}
+.reaction-options button{min-width:44px;min-height:48px;padding:6px;background:#fff1;border:1px solid #c9aa7080;border-radius:12px;font-size:26px;cursor:pointer}
+.reaction-close{margin-top:16px;min-height:44px;padding:8px 16px;border:1px solid #c9aa70;background:transparent;color:#fff4df;border-radius:10px;font:600 14px system-ui;cursor:pointer}
+.table-social-live{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+@media(max-width:700px){
+ #table .seat-player>.player-notepad{position:relative!important}
+ #table .seat-opponent .player-notepad{margin-top:8px}
+ #table .seat-player>.player-notepad{margin-top:4px}
+ #table .seat-callout{max-width:calc(100% + 8px);min-width:40px;box-sizing:border-box;font-size:14px;padding:7px}
+ #seatReact{position:static;grid-row:7;grid-column:1/-1;justify-self:end}
+}

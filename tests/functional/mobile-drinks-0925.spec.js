@@ -40,7 +40,8 @@ test('mobile four-player table keeps cards, drinks and controls separate through
   await expect(page.locator('.play-selected')).toBeEnabled();
   await page.locator('.play-selected').click();
   await page.locator('#tableMenuButton').click();
-  await expect(page.locator('#buildBadge')).toHaveText('Build 0.9.44');
+  const expectedBuild = fs.readFileSync('build-version.js', 'utf8').match(/window\.SHITHEAD_BUILD = "([^"]+)"/)[1];
+  await expect(page.locator('#buildBadge')).toHaveText(`Build ${expectedBuild}`);
   await expect(page.locator('#themeSelect')).toBeVisible();
   await page.locator('#closeTableMenu').click();
   // A pickup can produce a very large hand: keep every card reachable by scrolling.

@@ -440,7 +440,9 @@
     clearTimeout(timer); timer = null;
     if (!canFinishRound()) finishing = false;
     if (!active || paused || writing || document.hidden || document.querySelector('dialog[open]') || state.phase !== 'play' || state.currentPlayer === state.viewer) return;
-    timer = setTimeout(() => { timer=null; if(active && !paused && !document.hidden && !document.querySelector('dialog[open]')) step(); }, finishing ? 24 : 950);
+    const event = state.tableEvent;
+    const bigMoment = event && Date.now() - event.at < 2200 && ['pickup','burn','ofcom'].includes(event.kind);
+    timer = setTimeout(() => { timer=null; if(active && !paused && !document.hidden && !document.querySelector('dialog[open]')) step(); }, finishing ? 24 : bigMoment ? 2200 : 1500);
   }
   const previousRender = render;
   render = function renderSolo() {

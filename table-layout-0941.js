@@ -125,7 +125,7 @@
     again.hidden = next.hidden = !allowed;
     waiting.hidden = allowed;
     round.querySelector('#roundOverResult').textContent = state.shitHead
-      ? `${publicName(state.shitHead)} is the Shit Head. Score: ${state.scores[state.shitHead] || 0}.`
+      ? `${state.shitHead === state.viewer ? 'You are' : `${publicName(state.shitHead)} is`} the Shit Head. Score: ${state.scores[state.shitHead] || 0}.`
       : 'All done for this round.';
     round.querySelector('#roundOverHint').textContent = allowed
       ? 'Another round? New deal keeps everyone’s scores.'
@@ -175,13 +175,14 @@
     // Grid positions below work with existing direct children at every phase.
     if (sort) sort.hidden = n === 0;
     if (actions) actions.setAttribute('aria-label', state.phase === 'setup' ? 'Arrange your cards and get ready' : 'Your turn actions');
-    const current = state.currentPlayer === state.viewer ? 'Your turn' : `${publicName(state.currentPlayer)}’s turn`;
     turnMessage.textContent = state.phase === 'setup' ? 'Arrange your cards, then press Ready'
       : state.phase === 'lobby' ? 'Invite your friends · up to four players'
-      : state.phase === 'gameover' ? (state.lastMessage || 'Round complete')
-      : `${current}${state.followUpRank ? ' · add matching cards or finish turn' : ''}`;
+      : state.phase === 'gameover' ? 'Round complete' : '';
     const canFinish = !!window.ShitHeadSolo?.canFinishRound();
     const finishing = canFinish && window.ShitHeadSolo.finishing;
+    // Turn ownership belongs on the name cards. Never announce a hidden-hand
+    // follow-up opportunity to other players through the shared banner.
+    turn.hidden = state.phase === 'play' && !canFinish;
     document.body.classList.toggle('solo-player-out', canFinish);
     soloFinish.hidden = !canFinish;
     finishButton.textContent = finishing ? 'Finishing… · slow down' : 'Finish round »';
