@@ -32,6 +32,8 @@ async function waitForMultiplayer(page) {
 
 async function createRoom(page, player) {
   await page.locator('.multiplayer-trigger').click();
+  await page.locator('#mpDisplayName').fill(player);
+  await page.locator('.multiplayer-advanced summary').click();
   await page.locator('#mpPlayer').selectOption(player);
   await page.locator('#mpCreate').click();
   await expect(page.locator('#mpRoomDisplay')).not.toHaveText('');
@@ -40,6 +42,8 @@ async function createRoom(page, player) {
 
 async function joinRoom(page, player, roomCode) {
   await page.locator('.multiplayer-trigger').click();
+  await page.locator('#mpDisplayName').fill(player);
+  await page.locator('.multiplayer-advanced summary').click();
   await page.locator('#mpPlayer').selectOption(player);
   await page.locator('#mpRoomCode').fill(roomCode);
   await page.locator('#mpJoin').click();

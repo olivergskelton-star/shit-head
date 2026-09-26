@@ -120,7 +120,9 @@
     return ROOM_SEATS.includes(playerSelect.value) ? playerSelect.value : "";
   }
   function enteredDisplayName() {
-    return cleanDisplayName(displayNameInput.value || playerSelect.value || "Player");
+    const name = cleanDisplayName(displayNameInput.value || "Player");
+    try { localStorage.setItem('shithead-player-name', name); } catch {}
+    return name;
   }
   function enteredPin() {
     return String(rejoinPinInput.value || "").trim().toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 8);
@@ -148,15 +150,17 @@
         <label class="multiplayer-field">Your display name
           <input id="mpDisplayName" maxlength="24" autocomplete="nickname" spellcheck="false" placeholder="e.g. Oliver" />
         </label>
-        <label class="multiplayer-field">Seat preference <span class="field-note">optional</span>
-          <select id="mpPlayer"><option value="">Any open seat</option>${ROOM_SEATS.map((name) => `<option value="${name}">${name}</option>`).join("")}</select>
-        </label>
         <label class="multiplayer-field">Room code
           <input id="mpRoomCode" maxlength="6" autocomplete="off" spellcheck="false" placeholder="e.g. WINE42" />
+        </label>
+        <details class="multiplayer-advanced"><summary>Rejoin or choose a seat</summary>
+        <label class="multiplayer-field">Seat preference <span class="field-note">optional</span>
+          <select id="mpPlayer"><option value="">Any open seat</option>${ROOM_SEATS.map((name, index) => `<option value="${name}">Seat ${index + 1}</option>`).join("")}</select>
         </label>
         <label class="multiplayer-field">Rejoin PIN <span class="field-note">optional</span>
           <input id="mpRejoinPin" maxlength="8" autocomplete="one-time-code" spellcheck="false" placeholder="For another device" />
         </label>
+        </details>
         <p id="mpError" class="multiplayer-error"></p>
         <div class="multiplayer-actions">
           <button id="mpCreate" class="multiplayer-create" type="button">Create game</button>
@@ -168,6 +172,7 @@
         <div>ROOM</div>
         <div id="mpRoomDisplay" class="room-code"></div>
         <p id="mpRoomStatus" class="room-status"></p>
+        <div class="room-invite"><button id="mpCopyInvite" type="button">Copy invite link</button><input id="mpInviteLink" aria-label="Guest invite link" readonly /><span id="mpInviteStatus" role="status"></span></div>
         <p id="mpRejoinInfo" class="room-rejoin-info"></p>
         <div id="mpPlayers" class="room-players"></div>
       </div>
@@ -184,6 +189,17 @@
   const roomStatus = dialog.querySelector("#mpRoomStatus");
   const rejoinInfo = dialog.querySelector("#mpRejoinInfo");
   const playersEl = dialog.querySelector("#mpPlayers");
+  const inviteLink = dialog.querySelector('#mpInviteLink');
+  try { displayNameInput.value = localStorage.getItem('shithead-player-name') || ''; } catch {}
+  dialog.querySelector('#mpCopyInvite').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteLink.value);
+      dialog.querySelector('#mpInviteStatus').textContent = 'Invite link copied — share it with your friends.';
+    } catch {
+      inviteLink.focus(); inviteLink.select();
+      dialog.querySelector('#mpInviteStatus').textContent = 'Select and copy this invite link.';
+    }
+  };
 
   // A rejoin link carries no account credentials; it only pre-fills the room
   // code and seat PIN that the host already issued for this anonymous seat.
@@ -192,6 +208,7 @@
   const linkedPin = String(urlParams.get("pin") || "").toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 8);
   if (linkedRoom) roomInput.value = linkedRoom;
   if (linkedPin) rejoinPinInput.value = linkedPin;
+  if (linkedPin) dialog.querySelector('.multiplayer-advanced').open = true;
   if (linkedRoom && !displayNameInput.value) {
     try {
       const saved = JSON.parse(localStorage.getItem(`shithead-rejoin-${linkedRoom}`) || "null");
@@ -237,6 +254,7 @@
     trigger.textContent = online ? `Room ${MP.roomCode}` : "Play online";
     roomCard.classList.toggle("multiplayer-hidden", !online);
     roomDisplay.textContent = MP.roomCode;
+    inviteLink.value = MP.roomCode ? `${location.origin}${location.pathname}?room=${encodeURIComponent(MP.roomCode)}` : '';
 
     const connected = onlinePlayers();
     playersEl.replaceChildren(...ROOM_SEATS.map((name) => {
@@ -653,4 +671,5 @@
     startGame: startOnlineGame,
     get status() { return { role: MP.role, roomCode: MP.roomCode, player: MP.player, players: [...onlinePlayers()] }; },
   };
+  if (linkedRoom) dialog.showModal();
 })();

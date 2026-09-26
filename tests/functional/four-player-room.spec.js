@@ -12,15 +12,21 @@ async function load(page) {
 async function createRoom(page) {
   await page.locator('.multiplayer-trigger').click();
   await page.locator('#mpDisplayName').fill('Alex');
+  await page.locator('.multiplayer-advanced summary').click();
   await page.locator('#mpPlayer').selectOption('Oliver');
   await page.locator('#mpCreate').click();
   await expect(page.locator('#mpRoomDisplay')).not.toHaveText('');
   return (await page.locator('#mpRoomDisplay').textContent()).trim();
 }
 
-async function joinRoom(page, roomCode, seat, displayName) {
-  await page.locator('.multiplayer-trigger').click();
+async function joinRoom(page, roomCode, seat, displayName, invite = null) {
+  if (invite) {
+    await page.goto(invite);
+    await expect(page.locator('.multiplayer-dialog')).toBeVisible();
+    await expect(page.locator('#mpRoomCode')).toHaveValue(roomCode);
+  } else await page.locator('.multiplayer-trigger').click();
   await page.locator('#mpDisplayName').fill(displayName);
+  await page.locator('.multiplayer-advanced summary').click();
   await page.locator('#mpPlayer').selectOption(seat);
   await page.locator('#mpRoomCode').fill(roomCode);
   await page.locator('#mpJoin').click();
@@ -44,9 +50,12 @@ test('four humans occupy all seats, scores survive a seat rejoin, and solo has t
   await Promise.all(pages.map(load));
 
   const roomCode = await createRoom(host);
+  const invite = await host.locator('#mpInviteLink').inputValue();
+  expect(new URL(invite).searchParams.get('room')).toBe(roomCode);
+  expect(new URL(invite).searchParams.has('pin')).toBe(false);
   await joinRoom(dan, roomCode, 'Dan', 'Beth');
   await joinRoom(chris, roomCode, 'Chris', 'Cass');
-  await joinRoom(fourth, roomCode, 'Player 4', 'Dee');
+  await joinRoom(fourth, roomCode, 'Player 4', 'Dee', invite);
 
   await expect(host.locator('#mpPlayers .room-player.connected')).toHaveCount(4);
   await expect(host.locator('.room-lobby-primary')).toHaveText('START GAME · 4 PLAYERS');
@@ -57,6 +66,13 @@ test('four humans occupy all seats, scores survive a seat rejoin, and solo has t
   await expect(host.locator('#opponentLeft')).toBeVisible();
   await expect(host.locator('#opponentTop')).toBeVisible();
   await expect(host.locator('#opponentRight')).toBeVisible();
+  const tableGeometry = await host.evaluate(() => ({
+    top: document.querySelector('#opponentTop .face-row').getBoundingClientRect().toJSON(),
+    center: document.querySelector('.centre-zone').getBoundingClientRect().toJSON(),
+    own: document.querySelector('.self-table-zone').getBoundingClientRect().toJSON(),
+  }));
+  expect(tableGeometry.top.bottom).toBeLessThan(tableGeometry.center.top);
+  expect(tableGeometry.center.bottom).toBeLessThan(tableGeometry.own.top);
 
   for (const page of pages) {
     await page.evaluate(() => {
@@ -84,6 +100,7 @@ test('four humans occupy all seats, scores survive a seat rejoin, and solo has t
   await replacement.locator('.multiplayer-trigger').click();
   await replacement.locator('#mpDisplayName').fill('Dee');
   await replacement.locator('#mpRoomCode').fill(rejoin.roomCode);
+  await replacement.locator('.multiplayer-advanced summary').click();
   await replacement.locator('#mpRejoinPin').fill(rejoin.pin);
   await replacement.locator('#mpJoin').click();
   await replacement.waitForFunction(() => (

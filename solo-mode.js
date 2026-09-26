@@ -18,6 +18,7 @@
   const dialog = document.createElement('dialog');
   dialog.id = 'soloDialog';
   dialog.innerHTML = `<h2>Play solo</h2><p>You against three computer players, using the house rules.</p>
+    <label class="solo-name-label" for="soloName">Your name</label><input id="soloName" maxlength="24" autocomplete="nickname" placeholder="Enter your name" />
     <p id="soloSaveInfo"></p><div class="solo-actions"><button id="soloResume">Resume game</button>
     <button id="soloNew">New solo game</button><button id="soloClose">Back to table</button></div>
     <p class="solo-help">Before travelling, wait for “Ready for offline play”. Save this page to your home screen or bookmark it. Games save on this device.</p>`;
@@ -80,6 +81,11 @@
     writing = true;
     enter();
     setPlayerRoster([...DEFAULT_PLAYER_NAMES, 'CPU 3']);
+    const chosenName = dialog.querySelector('#soloName').value.trim().slice(0, 24) || 'You';
+    state.displayNames[state.viewer] = chosenName;
+    const cpuNames = ['Alex', 'Sam', 'Jo'];
+    PLAYER_NAMES.filter(name => name !== state.viewer).forEach((name, index) => { state.displayNames[name] = cpuNames[index]; });
+    try { localStorage.setItem('shithead-player-name', chosenName); } catch {}
     newGameBtn.click(); // Run every existing deal/reset listener in its normal order.
     state.scores = Object.fromEntries(PLAYER_NAMES.map(n => [n, 0]));
     arrangeCPUs();
@@ -447,6 +453,7 @@
   button.onclick = () => {
     paused=true; clearTimeout(timer); save();
     const saved=read(); dialog.querySelector('#soloResume').hidden=!valid(saved);
+    try { dialog.querySelector('#soloName').value = localStorage.getItem('shithead-player-name') || ''; } catch {}
     info.textContent = valid(saved) ? `Saved ${new Date(saved.savedAt).toLocaleString()}. A new solo game replaces this save.` : 'Your game will save automatically after every move.';
     dialog.showModal();
   };

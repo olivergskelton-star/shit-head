@@ -59,8 +59,15 @@ test('portrait mobile notepads stay readable and inside the viewport', async ({ 
     expect(pad.right).toBeLessThanOrEqual(390);
     expect(pad.top).toBeGreaterThanOrEqual(0);
     expect(pad.width).toBeGreaterThan(85);
-    expect(pad.height).toBeGreaterThan(55);
+    // Scores stay on the compact slip; the probability row now lives in Menu.
+    expect(pad.height).toBeGreaterThanOrEqual(44);
   }
+  const nameSizes = await page.locator('.notepad-name').evaluateAll(nodes => nodes.map(node => parseFloat(getComputedStyle(node).fontSize)));
+  expect(Math.min(...nameSizes)).toBeGreaterThanOrEqual(12);
+  await page.locator('#tableMenuButton').click();
+  await page.locator('#tableMenu summary').click();
+  await expect(page.locator('#tableMenuScores p')).toHaveCount(3);
+  await page.locator('#closeTableMenu').click();
 
   const selfPad = await page.locator('.seat-player .player-notepad').boundingBox();
   const setupActions = await page.locator('.setup-actions').boundingBox();
