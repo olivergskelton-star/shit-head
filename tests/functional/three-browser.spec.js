@@ -151,6 +151,13 @@ test('three real pages stay in sync through drinks, SORT, READY, PLAY and PICK U
   step('sort all three hands during setup');
   for (const [name, page] of Object.entries(byName)) {
     await page.locator('.sort-hand').click();
+    // A client may briefly receive the previous host snapshot before its own
+    // sorted setup proposal is acknowledged. Check the converged state.
+    await expect.poll(async () => {
+      const cards = await handSignature(page, name);
+      const ranks = cards.map(value => HOUSE_ORDER.indexOf(value.replace(/[♠♥♦♣]$/, '')));
+      return JSON.stringify(ranks) === JSON.stringify([...ranks].sort((a, b) => a - b));
+    }).toBe(true);
     const locallySorted = await handSignature(page, name);
     const rankNumbers = locallySorted.map((value) => HOUSE_ORDER.indexOf(value.replace(/[♠♥♦♣]$/, '')));
     expect([...rankNumbers].sort((a, b) => a - b)).toEqual(rankNumbers);
