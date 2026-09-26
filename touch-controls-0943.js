@@ -5,7 +5,22 @@
   const handledPointers = new Set();
   const ownTurn = () => state.phase === 'play' && state.currentPlayer === state.viewer
     && !document.querySelector('dialog[open]') && !window.ShitHeadTablePlay?.isOut(state.viewer);
-  const usable = button => button && !button.disabled && !button.hidden && button.getClientRects().length > 0;
+  // Presentation may hide these buttons on phones; disabled/hidden still carry
+  // the rules engine's legal-action state for gesture dispatch.
+  const usable = button => button && !button.disabled && !button.hidden;
+  const preference = document.createElement('label');
+  preference.className = 'touch-button-preference';
+  const toggle = document.createElement('input');
+  toggle.type = 'checkbox'; toggle.id = 'showTouchActionButtons';
+  try { toggle.checked = localStorage.getItem('shithead-touch-buttons') === '1'; } catch {}
+  const applyPreference = () => document.body.classList.toggle('show-touch-buttons', toggle.checked);
+  toggle.addEventListener('change', () => {
+    applyPreference();
+    try { localStorage.setItem('shithead-touch-buttons', toggle.checked ? '1' : '0'); } catch {}
+  });
+  preference.append(toggle, document.createTextNode('Show Play / Pick up buttons'));
+  document.querySelector('.table-menu-settings').append(preference);
+  applyPreference();
 
   document.addEventListener('pointerdown', event => {
     suppressClickUntil = 0;
@@ -74,5 +89,6 @@
     hint.textContent = 'Flick cards up to play · swipe the pile down to pick up';
     playerSeat.append(hint);
   };
+  document.body.classList.add('touch-gestures-ready');
   render();
 })();
