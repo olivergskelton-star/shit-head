@@ -37,6 +37,8 @@ test('real touch gestures play a single card and groups, pick up, and reject ill
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const hands=[['4♣','4♦','9♠'],['5♣'],['6♣'],['7♣']];
  await position(page,{hands});
+ await expect(page.locator('.play-selected')).toBeHidden();
+ await expect(page.locator('.pickup-pile')).toBeHidden();
  await swipe(page,'.hand button.card',0,-65);
  expect(await page.evaluate(()=>state.players[state.viewer].hand.length)).toBe(2);
  expect(await page.evaluate(()=>state.discard.map(cardText))).toEqual(['4♣']);await conserved(page);
@@ -90,4 +92,24 @@ test('touch flicks support face-up and exposed blind table cards',async({page})=
   expect(await page.evaluate(()=>window.ShitHeadTablePlay.isOut(state.viewer))).toBe(true);
   await conserved(page);
  }
+});
+
+test('phone action buttons are optional and the Menu preference persists',async({page})=>{
+ await position(page,{hands:[['4♣','4♦','9♠'],['5♣'],['6♣'],['7♣']]});
+ await page.locator('.hand button.card').first().tap();
+ await expect(page.locator('.play-selected')).toBeHidden();
+ await expect(page.locator('.pickup-pile')).toBeHidden();
+ await page.locator('#tableMenuButton').click();
+ await page.locator('#showTouchActionButtons').check();
+ await page.locator('#closeTableMenu').click();
+ await expect(page.locator('.play-selected')).toBeVisible();
+ await expect(page.locator('.play-selected')).toBeEnabled();
+ await page.locator('.play-selected').click();
+ await expect(page.locator('.finish-turn')).toBeVisible();
+ await page.reload();
+ await page.locator('#tableMenuButton').click();
+ await expect(page.locator('#showTouchActionButtons')).toBeChecked();
+ await page.locator('#showTouchActionButtons').uncheck();
+ await page.locator('#closeTableMenu').click();
+ expect(await page.evaluate(()=>localStorage.getItem('shithead-touch-buttons'))).toBe('0');
 });
