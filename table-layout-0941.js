@@ -55,6 +55,13 @@
   roundActions.append(again, waiting);
   turn.append(roundActions);
 
+  const soloFinish = document.createElement('div');
+  soloFinish.className = 'solo-finish-actions'; soloFinish.hidden = true;
+  const finishButton = document.createElement('button');
+  finishButton.type = 'button'; finishButton.id = 'soloFinishRound';
+  finishButton.onclick = () => window.ShitHeadSolo?.finishRound();
+  soloFinish.append(finishButton); turn.append(soloFinish);
+
   const round = document.createElement('dialog');
   round.id = 'roundOverDialog'; round.className = 'round-over';
   round.setAttribute('aria-labelledby', 'roundOverTitle');
@@ -173,6 +180,15 @@
       : state.phase === 'lobby' ? 'Invite your friends · up to four players'
       : state.phase === 'gameover' ? (state.lastMessage || 'Round complete')
       : `${current}${state.followUpRank ? ' · add matching cards or finish turn' : ''}`;
+    const canFinish = !!window.ShitHeadSolo?.canFinishRound();
+    const finishing = canFinish && window.ShitHeadSolo.finishing;
+    document.body.classList.toggle('solo-player-out', canFinish);
+    soloFinish.hidden = !canFinish;
+    finishButton.textContent = finishing ? 'Finishing… · slow down' : 'Finish round »';
+    finishButton.setAttribute('aria-pressed', String(finishing));
+    if (canFinish) turnMessage.textContent = finishing
+      ? 'Finishing the CPU turns at speed…'
+      : 'You’re out! Watch the CPUs, or finish the round at speed.';
     updateRound();
     if (menu.open) updateMenuScores();
   }
