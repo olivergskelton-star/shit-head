@@ -1,4 +1,4 @@
-const VERSION = "shithead-offline-0.9.41";
+const VERSION = "shithead-offline-0.9.42";
 const ASSETS = [
   "./",
   "./index.html",

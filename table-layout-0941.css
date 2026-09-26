@@ -126,3 +126,42 @@
  #table .setup-actions{background:none!important;box-shadow:none!important}
  #table .player-label::after{display:none!important}
 }
+
+/* Round completion and a touch-friendly compact drinks display. */
+.round-over{box-sizing:border-box;width:min(420px,calc(100vw - 28px));max-height:90dvh;overflow:auto;padding:26px;background:#172e25;color:#fff4df;border:1px solid #c9aa70;border-radius:22px;box-shadow:0 18px 70px #0008}
+.round-over::backdrop{background:#100d0bba}
+.round-over h2{margin:0 0 12px;font-size:1.8rem}
+.round-over p{line-height:1.5}
+.round-over small{display:block;margin-top:18px;line-height:1.5;color:#d2c5b0}
+.round-over-actions{display:flex;gap:12px;margin-top:22px}
+.round-over button,.round-actions button{min-height:48px;flex:1;padding:12px 18px;background:#ebcd8a;color:#211c15;border:1px solid #ebcd8a;border-radius:12px;font:inherit;font-weight:700;cursor:pointer}
+.round-over #roundQuit,.round-over #startOnline{background:transparent;color:#fff4df}
+.round-actions{margin-top:12px}
+.round-actions[hidden],.round-actions [hidden],.round-over [hidden]{display:none!important}
+.round-finished .mobile-turn-status{display:block}
+@media(min-width:701px){.round-finished .mobile-turn-status{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:1500;background:#172e25;padding:12px 20px;border:1px solid #c9aa70;border-radius:14px;text-align:center;max-width:460px}}
+.mobile-drink-icon,.mobile-drink-label{display:none}
+.drink-picker-close{min-height:44px;padding:8px 16px;border:1px solid #c9aa70;border-radius:10px;background:#172e25;color:#fff4df;font:inherit;margin:0 0 10px;cursor:pointer}
+@media(max-width:700px){
+ #table .beer-mat{background:#211c1580!important;border:1px solid #c9aa7060!important;border-radius:12px!important;box-shadow:none!important;padding:4px!important;transform:none!important;display:flex!important;align-items:center;justify-content:center;gap:4px}
+ #table .beer-mat::before,#table .beer-mat::after,#table .beer-mat>.asset-direct-frame{display:none!important}
+ #table .mobile-drink-icon{display:none}
+ #table .self-beer-mat{width:76px!important;height:auto!important;min-height:48px!important;flex-direction:column}
+ #table .self-beer-mat .mobile-drink-label{display:block;font:600 10px/1.2 system-ui;color:#fff4df;white-space:normal;text-align:center}
+ #table .self-beer-mat.drink-editable .mobile-drink-label::after{content:' ▾'}
+ #table .seat-opponent .opponent-beer-mat{width:26px!important;height:26px!important;bottom:0!important;border:0!important;background:none!important;padding:0!important}
+ #table .opponent-beer-mat .mobile-drink-label{display:block;font:500 10px/1.2 system-ui;color:#e1ceaf;text-align:center}
+ .drink-picker.asset-drink-picker{position:fixed!important;box-sizing:border-box;top:auto!important;left:8px!important;right:8px!important;bottom:max(8px,env(safe-area-inset-bottom))!important;width:auto!important;max-width:none!important;max-height:75dvh!important;overflow-y:auto!important;padding:16px!important;border-radius:20px!important;z-index:10000!important}
+ .asset-drink-picker .drink-picker-title{display:inline-block;width:calc(100% - 80px);font-size:14px}
+ .asset-drink-picker .drink-picker-close{float:right}
+ .asset-drink-picker .drink-picker-grid{clear:both;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+ .asset-drink-picker .drink-picker-option{min-height:82px}
+ .round-finished #table .mobile-hand-label,.round-finished #table .self-table-zone,.round-finished #table .hand:empty{display:none!important}
+}
+
+.game-start::backdrop{background:#30271f}
+@media(max-width:700px){
+ #table .seat-opponent .opponent-beer-mat{position:relative!important;inset:auto!important;align-self:center;margin-top:-4px!important;width:auto!important;max-width:100%;height:auto!important;min-height:14px!important}
+ #table .opponent-hand-wrap{align-self:center;max-width:100%}
+ #table .self-beer-mat .mobile-drink-icon{display:block;color:#c9aa70;font:600 9px/1.1 system-ui;letter-spacing:1px;text-transform:uppercase}
+}

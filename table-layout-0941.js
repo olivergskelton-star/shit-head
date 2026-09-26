@@ -43,6 +43,98 @@
   turn.setAttribute('role', 'status');
   document.querySelector('.centre-zone').before(turn);
 
+  const turnMessage = document.createElement('span');
+  turn.append(turnMessage);
+  const roundActions = document.createElement('div');
+  roundActions.className = 'round-actions';
+  roundActions.hidden = true;
+  const again = document.createElement('button');
+  again.id = 'roundDealAgain'; again.type = 'button'; again.textContent = 'Deal again';
+  const waiting = document.createElement('span');
+  waiting.textContent = 'Waiting for the host to deal again';
+  roundActions.append(again, waiting);
+  turn.append(roundActions);
+
+  const round = document.createElement('dialog');
+  round.id = 'roundOverDialog'; round.className = 'round-over';
+  round.setAttribute('aria-labelledby', 'roundOverTitle');
+  round.innerHTML = `<h2 id="roundOverTitle">Round over</h2><p id="roundOverResult"></p>
+    <p id="roundOverHint"></p><div class="round-over-actions">
+    <button type="button" id="roundNewDeal" autofocus>New deal</button>
+    <button type="button" id="roundQuit">Quit</button></div>
+    <small>Quit returns to the start screen and leaves any online room.</small>`;
+  document.body.append(round);
+  const next = round.querySelector('#roundNewDeal');
+  let offeredRound = false;
+  let scheduledRound = false;
+  function canDealRound() {
+    const role = window.ShitHeadMultiplayer?.status?.role;
+    return state.phase === 'gameover' && (!role || role === 'local' || role === 'host');
+  }
+  function nextRound() {
+    if (!canDealRound() || newGameBtn.disabled) return;
+    round.close(); newGameBtn.click();
+  }
+  again.onclick = nextRound;
+  next.onclick = nextRound;
+  const start = document.createElement('dialog');
+  start.id = 'gameStartDialog'; start.className = 'round-over game-start';
+  start.setAttribute('aria-labelledby', 'gameStartTitle');
+  start.innerHTML = `<p class="eyebrow">Red wine &amp; cards</p><h2 id="gameStartTitle">S**t Head</h2>
+    <p>Pull up a chair.</p><div class="round-over-actions">
+    <button type="button" id="startSolo">Play solo</button>
+    <button type="button" id="startOnline">Play online</button></div>
+    <small>Solo against three CPUs, or invite up to three friends.</small>`;
+  document.body.append(start);
+  let atStart = false;
+  round.querySelector('#roundQuit').onclick = () => {
+    atStart = true;
+    window.ShitHeadSolo?.stop();
+    if (window.ShitHeadMultiplayer?.status.role !== 'local') window.ShitHeadMultiplayer?.disconnect();
+    round.close();
+    document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
+    start.showModal();
+  };
+  start.querySelector('#startSolo').onclick = () => {
+    start.close(); document.querySelector('#soloPlay').click();
+  };
+  start.querySelector('#startOnline').onclick = () => {
+    start.close(); document.querySelector('.multiplayer-trigger').click();
+  };
+  // Keep the start screen as the destination when a setup sheet is cancelled.
+  start.addEventListener('cancel', event => event.preventDefault());
+  document.addEventListener('close', () => {
+    if (atStart && window.ShitHeadSolo?.active) {
+      atStart = false; offeredRound = false; updateRound();
+    }
+    if (atStart && !document.querySelector('dialog[open]')) start.showModal();
+  }, true);
+  function updateRound() {
+    const finished = state.phase === 'gameover';
+    document.body.classList.toggle('round-finished', finished);
+    roundActions.hidden = !finished;
+    if (!finished) { atStart = false; if (start.open) start.close(); offeredRound = false; if (round.open) round.close(); return; }
+    const allowed = canDealRound();
+    again.hidden = next.hidden = !allowed;
+    waiting.hidden = allowed;
+    round.querySelector('#roundOverResult').textContent = state.shitHead
+      ? `${publicName(state.shitHead)} is the Shit Head. Score: ${state.scores[state.shitHead] || 0}.`
+      : 'All done for this round.';
+    round.querySelector('#roundOverHint').textContent = allowed
+      ? 'Another round? New deal keeps everyone’s scores.'
+      : 'The host can deal the next round. Your scores are kept.';
+    // Wait for the remaining render wrappers (including multiplayer) to finish.
+    if (!offeredRound && !scheduledRound) {
+      scheduledRound = true;
+      setTimeout(() => {
+        scheduledRound = false;
+        if (state.phase !== 'gameover' || offeredRound || document.querySelector('dialog[open]')) return;
+        offeredRound = true; round.showModal();
+      }, 0);
+    }
+  }
+  document.addEventListener('close', () => { if (state.phase === 'gameover' && !offeredRound) updateRound(); }, true);
+
   function updateMenuScores() {
     const scores = menu.querySelector('#tableMenuScores');
     scores.replaceChildren();
@@ -77,10 +169,11 @@
     if (sort) sort.hidden = n === 0;
     if (actions) actions.setAttribute('aria-label', state.phase === 'setup' ? 'Arrange your cards and get ready' : 'Your turn actions');
     const current = state.currentPlayer === state.viewer ? 'Your turn' : `${publicName(state.currentPlayer)}’s turn`;
-    turn.textContent = state.phase === 'setup' ? 'Arrange your cards, then press Ready'
+    turnMessage.textContent = state.phase === 'setup' ? 'Arrange your cards, then press Ready'
       : state.phase === 'lobby' ? 'Invite your friends · up to four players'
       : state.phase === 'gameover' ? (state.lastMessage || 'Round complete')
       : `${current}${state.followUpRank ? ' · add matching cards or finish turn' : ''}`;
+    updateRound();
     if (menu.open) updateMenuScores();
   }
   const previousRender = render;
