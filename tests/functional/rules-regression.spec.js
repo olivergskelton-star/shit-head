@@ -34,6 +34,8 @@ async function waitForMultiplayer(page) {
 
 async function createRoom(page, player) {
   await page.locator('.multiplayer-trigger').click();
+  await page.locator('#mpDisplayName').fill(player);
+  await page.locator('.multiplayer-advanced summary').click();
   await page.locator('#mpPlayer').selectOption(player);
   await page.locator('#mpCreate').click();
   await expect(page.locator('#mpRoomDisplay')).not.toHaveText('');
@@ -42,6 +44,8 @@ async function createRoom(page, player) {
 
 async function joinRoom(page, player, roomCode) {
   await page.locator('.multiplayer-trigger').click();
+  await page.locator('#mpDisplayName').fill(player);
+  await page.locator('.multiplayer-advanced summary').click();
   await page.locator('#mpPlayer').selectOption(player);
   await page.locator('#mpRoomCode').fill(roomCode);
   await page.locator('#mpJoin').click();
@@ -155,7 +159,9 @@ test('table stacks, blind play, burns, privacy, gameover and score stay synchron
   step('host reverses direction between deals and clients see the locked setting');
   await expect(oliver.locator('.direction-toggle')).toBeEnabled();
   await expect(dan.locator('.direction-toggle')).toBeDisabled();
+  await oliver.locator('#tableMenuButton').click();
   await oliver.locator('.direction-toggle').click();
+  await oliver.locator('#closeTableMenu').click();
   await Promise.all(pages.map((page) => page.waitForFunction(() => state.playDirection === -1)));
   await expectAllSynced(pages);
 
@@ -412,7 +418,8 @@ test('table stacks, blind play, burns, privacy, gameover and score stay synchron
   }
 
   step('new deal preserves the shared tally and arms the following round for scoring');
-  await oliver.locator('#newGameBtn').click();
+  await oliver.locator('#tableMenuButton').click();
+  await oliver.locator('#menuNewDeal').click();
   await Promise.all(pages.map((page) => page.waitForFunction(() => (
     state.phase === 'setup'
     && state.roundScored === false

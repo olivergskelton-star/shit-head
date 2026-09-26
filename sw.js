@@ -1,4 +1,4 @@
-const VERSION = "shithead-offline-0.9.40";
+const VERSION = "shithead-offline-0.9.41";
 const ASSETS = [
   "./",
   "./index.html",
@@ -56,6 +56,8 @@ const ASSETS = [
   "./table-polish.css",
   "./table-state-ui.css",
   "./table-state-ui.js",
+  "./table-layout-0941.css",
+  "./table-layout-0941.js",
   "./assets/table/coaster-casino.png",
   "./assets/table/coaster-kitchen.png",
   "./assets/table/coaster-pub.png",

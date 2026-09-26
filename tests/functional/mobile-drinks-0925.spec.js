@@ -1,53 +1,52 @@
 const { test, expect } = require('@playwright/test');
+const fs = require('node:fs');
 
-test('portrait mobile gives drink/coaster groups a visible tabletop footprint', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-  const page = await context.newPage();
+test('mobile four-player table keeps cards, drinks and controls separate through setup and play', async ({ page }) => {
+  await page.route('https://unpkg.com/**', route => route.fulfill({ contentType: 'application/javascript', body: fs.readFileSync('tests/functional/fake-peer.js', 'utf8') }));
+  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/index.html');
-
-  // This regression protects the 0.9.25 mobile layout contract. It must keep
-  // running on later builds rather than pinning the entire app to 0.9.25.
-  await page.waitForFunction(() => (
-    !!window.SHITHEAD_BUILD
-    && !!document.querySelector('.self-beer-mat')
-    && !!document.querySelector('.seat-left .opponent-beer-mat')
-    && !!document.querySelector('.seat-right .opponent-beer-mat')
-  ));
-
-  const self = page.locator('.self-beer-mat');
-  const left = page.locator('.seat-left .opponent-beer-mat');
-  const right = page.locator('.seat-right .opponent-beer-mat');
-
-  await expect(self).toBeVisible();
-  await expect(left).toBeVisible();
-  await expect(right).toBeVisible();
-
-  const metrics = await page.evaluate(() => {
-    const selfMat = document.querySelector('.self-beer-mat');
-    const leftMat = document.querySelector('.seat-left .opponent-beer-mat');
-    const rightMat = document.querySelector('.seat-right .opponent-beer-mat');
-    const cssLoaded = [...document.styleSheets].some((sheet) => (
-      String(sheet.href || '').includes('mobile-drinks-0925.css')
-    ));
-
-    return {
-      cssLoaded,
-      self: selfMat.getBoundingClientRect().width,
-      left: leftMat.getBoundingClientRect().width,
-      right: rightMat.getBoundingClientRect().width,
-      selfScale: getComputedStyle(selfMat).getPropertyValue('--seat-drink-scale').trim(),
-      leftScale: getComputedStyle(leftMat).getPropertyValue('--seat-drink-scale').trim(),
-      selfTransform: getComputedStyle(selfMat.closest('.self-identity-row')).transform,
-    };
-  });
-
-  expect(metrics.cssLoaded).toBe(true);
-  expect(metrics.self).toBeGreaterThanOrEqual(70);
-  expect(metrics.left).toBeGreaterThanOrEqual(62);
-  expect(metrics.right).toBeGreaterThanOrEqual(62);
-  expect(metrics.selfScale).toBe('1.12');
-  expect(metrics.leftScale).toBe('1.02');
-  expect(metrics.selfTransform).toBe('none');
-
-  await context.close();
+  await page.waitForFunction(() => !!window.ShitHeadMultiplayer);
+  await page.locator('#soloPlay').click();
+  await page.locator('#soloName').fill('Taylor');
+  await page.locator('#soloNew').click();
+  await expect(page.locator('#playerSeat .notepad-name')).toHaveText('Taylor');
+  await expect(page.locator('.seat-opponent:not([hidden])')).toHaveCount(3);
+  const overlap = (a, b) => Math.min(a.right, b.right) > Math.max(a.left, b.left) + 1 && Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top) + 1;
+  async function checkGeometry() {
+    const boxes = await page.evaluate(() => {
+      const box = selector => document.querySelector(selector).getBoundingClientRect().toJSON();
+      return { hand: box('#playerSeat .hand'), actions: box('#playerSeat .play-actions'), ownTable: box('.self-table-zone'), drink: box('.self-beer-mat'), center: box('.centre-zone'), opponents: ['#opponentLeft', '#opponentTop', '#opponentRight'].map(box), width: document.documentElement.scrollWidth, viewport: innerWidth };
+    });
+    expect(boxes.width).toBeLessThanOrEqual(boxes.viewport);
+    expect(overlap(boxes.hand, boxes.actions)).toBe(false);
+    expect(overlap(boxes.ownTable, boxes.drink)).toBe(false);
+    expect(overlap(boxes.ownTable, boxes.center)).toBe(false);
+    expect(overlap(boxes.opponents[0], boxes.opponents[1])).toBe(false);
+    expect(overlap(boxes.opponents[1], boxes.opponents[2])).toBe(false);
+    for (const opponent of boxes.opponents) expect(overlap(opponent, boxes.center)).toBe(false);
+  }
+  for (const width of [320, 390, 430, 700]) { await page.setViewportSize({ width, height: 900 }); await checkGeometry(); }
+  await page.setViewportSize({ width: 390, height: 844 });
+  const before = await page.evaluate(() => ({ hand: cardText(state.players[state.viewer].hand[0]), table: cardText(state.players[state.viewer].faceUp[0]) }));
+  await page.locator('.hand button.card').first().click();
+  await page.locator('.self-face-row .setup-table-card').first().click();
+  expect(await page.evaluate(() => cardText(state.players[state.viewer].hand[0]))).toBe(before.table);
+  expect(await page.evaluate(() => cardText(state.players[state.viewer].faceUp[0]))).toBe(before.hand);
+  await page.locator('.setup-ready').click();
+  await page.evaluate(() => { state.currentPlayer = state.viewer; state.discard = []; state.followUpRank = null; render(); });
+  await checkGeometry();
+  await page.locator('.hand button.card').first().click();
+  await expect(page.locator('.play-selected')).toBeEnabled();
+  await page.locator('.play-selected').click();
+  await page.locator('#tableMenuButton').click();
+  await expect(page.locator('#buildBadge')).toHaveText('Build 0.9.41');
+  await expect(page.locator('#themeSelect')).toBeVisible();
+  await page.locator('#closeTableMenu').click();
+  // A pickup can produce a very large hand: keep every card reachable by scrolling.
+  await page.evaluate(() => { state.players[state.viewer].hand.push(...state.drawPile.splice(0)); state.currentPlayer = state.viewer; render(); });
+  await checkGeometry();
+  await page.locator('.hand button.card').last().click();
+  await expect(page.locator('.hand button.card').last()).toHaveClass(/selected/);
+  expect(errors).toEqual([]);
 });
