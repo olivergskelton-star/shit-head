@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#17342a" />
   <title>S**t Head</title>
-  <link rel="stylesheet" href="styles.css?v=0.9.42" />
+  <link rel="stylesheet" href="styles.css?v=0.9.43" />
   <style>
     .hand button.card.selected {
       transform: translateY(-14px);
@@ -30,24 +30,24 @@
     .play-selected:disabled { opacity: .4; cursor: default; }
     .selection-hint { color: rgba(255,255,255,.7); font-size: .76rem; }
   </style>
-  <link rel="stylesheet" href="table-polish.css?v=0.9.42" />
-  <link rel="stylesheet" href="coaster-v2.css?v=0.9.42" />
-  <link rel="stylesheet" href="coaster-names.css?v=0.9.42" />
-  <link rel="stylesheet" href="engine-v2.css?v=0.9.42" />
-  <link rel="stylesheet" href="setup-phase.css?v=0.9.42" />
-  <link rel="stylesheet" href="hand-tools.css?v=0.9.42" />
-  <link rel="stylesheet" href="table-state-ui.css?v=0.9.42" />
-  <link rel="stylesheet" href="game-ticker.css?v=0.9.42" />
-  <link rel="stylesheet" href="table-perspective.css?v=0.9.42" />
-  <link rel="stylesheet" href="card-corners.css?v=0.9.42" />
-  <link rel="stylesheet" href="mobile-layout.css?v=0.9.42" />
-  <link rel="stylesheet" href="mobile-portrait-polish.css?v=0.9.42" />
-  <link rel="stylesheet" href="how-to-play.css?v=0.9.42" />
-  <link rel="stylesheet" href="game-feel-0915.css?v=0.9.42" />
-  <link rel="stylesheet" href="player-status-0920.css?v=0.9.42" />
+  <link rel="stylesheet" href="table-polish.css?v=0.9.43" />
+  <link rel="stylesheet" href="coaster-v2.css?v=0.9.43" />
+  <link rel="stylesheet" href="coaster-names.css?v=0.9.43" />
+  <link rel="stylesheet" href="engine-v2.css?v=0.9.43" />
+  <link rel="stylesheet" href="setup-phase.css?v=0.9.43" />
+  <link rel="stylesheet" href="hand-tools.css?v=0.9.43" />
+  <link rel="stylesheet" href="table-state-ui.css?v=0.9.43" />
+  <link rel="stylesheet" href="game-ticker.css?v=0.9.43" />
+  <link rel="stylesheet" href="table-perspective.css?v=0.9.43" />
+  <link rel="stylesheet" href="card-corners.css?v=0.9.43" />
+  <link rel="stylesheet" href="mobile-layout.css?v=0.9.43" />
+  <link rel="stylesheet" href="mobile-portrait-polish.css?v=0.9.43" />
+  <link rel="stylesheet" href="how-to-play.css?v=0.9.43" />
+  <link rel="stylesheet" href="game-feel-0915.css?v=0.9.43" />
+  <link rel="stylesheet" href="player-status-0920.css?v=0.9.43" />
   <link rel="apple-touch-icon" href="assets/table/coaster-kitchen.png" />
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="solo-mode.css?v=0.9.42" />
+  <link rel="stylesheet" href="solo-mode.css?v=0.9.43" />
 </head>
 <body data-theme="kitchen">
   <main class="game-shell">
@@ -146,21 +146,21 @@
             <span class="how-to-play-step-number">4</span>
             <div>
               <h3>Select and play</h3>
-              <p>The red glow shows whose turn it is. Tap a card so it lifts, then press <strong>PLAY</strong>. You may select several cards if they have the same rank. Play equal to or higher than the live card on the pile.</p>
+              <p>The red glow shows whose turn it is. Tap a card so it lifts, then press <strong>PLAY</strong>. On touch screens, flick a card upwards to play it, or select matching cards and flick one of the selected cards up to play the group. You may select several cards if they have the same rank. Play equal to or higher than the live card on the pile.</p>
             </div>
           </li>
           <li>
             <span class="how-to-play-step-number">5</span>
             <div>
               <h3>Draw or pick up</h3>
-              <p>While the draw pile remains, refill your hand to at least 3 cards. If you cannot play—or choose not to—press <strong>PICK UP</strong> to take the whole pile. If another matching card is offered, add it or press <strong>FINISH TURN</strong>.</p>
+              <p>While the draw pile remains, refill your hand to at least 3 cards. If you cannot play—or choose not to—press <strong>PICK UP</strong> to take the whole pile. On touch screens, you can also swipe down on the central pile. If another matching card is offered, add it or press <strong>FINISH TURN</strong>.</p>
             </div>
           </li>
           <li>
             <span class="how-to-play-step-number">6</span>
             <div>
               <h3>Finish the table</h3>
-              <p>Once the draw pile is gone, finish your hand. If your final hand cards match a visible table card, you may include it in the same play. The three table positions then act independently: play any visible top card, or choose any exposed face-down card blind as soon as the card above it has gone. If none of your visible cards can play, select one—or matching cards—and press <strong>PICK UP</strong>; those cards and the central pile enter your hand. Players with no cards left are OUT and are skipped. At game over, the Shit Head may reveal any bottom cards they still held.</p>
+              <p>Once the draw pile is gone, finish your hand. If your final hand cards match a visible table card, you may include it in the same play. The three table positions then act independently: play any visible top card, or choose any exposed face-down card blind as soon as the card above it has gone. If none of your visible cards can play, select one—or matching cards—and press <strong>PICK UP</strong>; those cards and the central pile enter your hand. Players with no cards left are OUT and are skipped. In solo, once you are out, press <strong>Finish round</strong> to speed through the remaining CPU turns; you can slow them down again. At game over, the Shit Head may reveal any bottom cards they still held.</p>
             </div>
           </li>
         </ol>
@@ -198,24 +198,25 @@
     </article>
   </dialog>
 
-  <script src="build-version.js?v=0.9.42"></script>
-  <script src="app.js?v=0.9.42"></script>
-  <script src="engine-v2.js?v=0.9.42"></script>
-  <script src="setup-phase.js?v=0.9.42"></script>
-  <script src="hand-tools.js?v=0.9.42"></script>
-  <script src="table-state-ui.js?v=0.9.42"></script>
-  <script src="opening-rule.js?v=0.9.42"></script>
-  <script src="game-ticker.js?v=0.9.42"></script>
-  <script src="coaster-names.js?v=0.9.42"></script>
-  <script src="table-card-play.js?v=0.9.42"></script>
-  <script src="round-score-0917.js?v=0.9.42"></script>
-  <script src="game-feel-0915.js?v=0.9.42"></script>
-  <script src="shithead-risk-v1.js?v=0.9.42"></script>
-  <script src="shithead-belief-state-v1.js?v=0.9.42"></script>
-  <script src="shithead-public-risk-v1.js?v=0.9.42"></script>
-  <script src="player-status-0920.js?v=0.9.42"></script>
-  <script src="how-to-play.js?v=0.9.42"></script>
-  <script src="solo-mode.js?v=0.9.42"></script>
-  <script src="table-layout-0941.js?v=0.9.42"></script>
+  <script src="build-version.js?v=0.9.43"></script>
+  <script src="app.js?v=0.9.43"></script>
+  <script src="engine-v2.js?v=0.9.43"></script>
+  <script src="setup-phase.js?v=0.9.43"></script>
+  <script src="hand-tools.js?v=0.9.43"></script>
+  <script src="table-state-ui.js?v=0.9.43"></script>
+  <script src="opening-rule.js?v=0.9.43"></script>
+  <script src="game-ticker.js?v=0.9.43"></script>
+  <script src="coaster-names.js?v=0.9.43"></script>
+  <script src="table-card-play.js?v=0.9.43"></script>
+  <script src="round-score-0917.js?v=0.9.43"></script>
+  <script src="game-feel-0915.js?v=0.9.43"></script>
+  <script src="shithead-risk-v1.js?v=0.9.43"></script>
+  <script src="shithead-belief-state-v1.js?v=0.9.43"></script>
+  <script src="shithead-public-risk-v1.js?v=0.9.43"></script>
+  <script src="player-status-0920.js?v=0.9.43"></script>
+  <script src="how-to-play.js?v=0.9.43"></script>
+  <script src="solo-mode.js?v=0.9.43"></script>
+  <script src="table-layout-0941.js?v=0.9.43"></script>
+  <script src="touch-controls-0943.js?v=0.9.43"></script>
 </body>
 </html>

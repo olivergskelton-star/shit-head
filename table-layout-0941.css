@@ -165,3 +165,13 @@
  #table .opponent-hand-wrap{align-self:center;max-width:100%}
  #table .self-beer-mat .mobile-drink-icon{display:block;color:#c9aa70;font:600 9px/1.1 system-ui;letter-spacing:1px;text-transform:uppercase}
 }
+
+.solo-finish-actions{margin-top:10px}
+.solo-finish-actions[hidden]{display:none!important}
+.solo-finish-actions button{min-height:48px;padding:10px 18px;background:#ebcd8a;color:#211c15;border:1px solid #ebcd8a;border-radius:12px;font:inherit;font-weight:700;cursor:pointer}
+.solo-player-out .mobile-turn-status{display:block}
+@media(min-width:701px){.solo-player-out .mobile-turn-status{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:1500;background:#172e25;padding:12px 20px;border:1px solid #c9aa70;border-radius:14px;text-align:center;max-width:460px}}
+/* Only card/pile gestures claim vertical movement; page margins still scroll. */
+.gesture-turn #playerSeat .hand button.card,.gesture-turn #playerSeat .self-face-row button.card,.gesture-turn #discardPile{touch-action:pan-x!important;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.gesture-hint{display:none}
+@media(pointer:coarse){.gesture-turn .gesture-hint{display:block;grid-column:1/-1;grid-row:6;font-size:11px;line-height:1.4;color:#dfcdb1;text-align:center;margin:0}}

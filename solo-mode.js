@@ -3,7 +3,7 @@
 (() => {
   const SAVE = 'shithead-solo-v1';
   const ACTIVE = 'shithead-solo-active';
-  let active = false, paused = false, timer = null, writing = false;
+  let active = false, paused = false, timer = null, writing = false, finishing = false;
   const api = window.ShitHeadTablePlay;
   const visited = new Map();
   const button = document.createElement('button');
@@ -52,7 +52,7 @@
     } catch { button.title = 'Saving unavailable'; info.textContent = 'This browser could not save your game. Keep the tab open to continue.'; }
   }
   function stop() {
-    save(); active = false; clearTimeout(timer); timer = null;
+    finishing = false; save(); active = false; clearTimeout(timer); timer = null;
     try { localStorage.removeItem(ACTIVE); } catch {}
     viewerSelect.disabled = false;
     button.textContent = 'Play solo';
@@ -60,7 +60,7 @@
   }
   function enter() {
     window.ShitHeadMultiplayer?.disconnect();
-    active = true; paused = false;
+    active = true; paused = false; finishing = false;
     document.body.classList.add('solo-mode');
     viewerSelect.disabled = true;
     button.textContent = 'Solo · pause';
@@ -427,10 +427,20 @@
     else if (action.type==='finish') finishTurn(name);
     else pickupDiscard(name);
   }
+  function canFinishRound() {
+    return active && state.phase === 'play' && api.isOut(state.viewer)
+      && (!window.ShitHeadMultiplayer || window.ShitHeadMultiplayer.status.role === 'local');
+  }
+  function finishRound() {
+    if (!canFinishRound()) return;
+    finishing = !finishing;
+    render();
+  }
   function schedule() {
     clearTimeout(timer); timer = null;
+    if (!canFinishRound()) finishing = false;
     if (!active || paused || writing || document.hidden || document.querySelector('dialog[open]') || state.phase !== 'play' || state.currentPlayer === state.viewer) return;
-    timer = setTimeout(() => { timer=null; if(active && !paused && !document.hidden && !document.querySelector('dialog[open]')) step(); }, 950);
+    timer = setTimeout(() => { timer=null; if(active && !paused && !document.hidden && !document.querySelector('dialog[open]')) step(); }, finishing ? 24 : 950);
   }
   const previousRender = render;
   render = function renderSolo() {
@@ -467,12 +477,12 @@
   themeSelect.addEventListener('change',save);
   newGameBtn.addEventListener('click',()=>{
     if (!active || writing) return;
-    visited.clear();
+    finishing = false; visited.clear();
     arrangeCPUs(); render();
   });
   // Stop before a network room mutates the local game; its save remains resumable.
   document.addEventListener('click',e=>{if(active && e.target.closest('#mpCreate,#mpJoin')) { stop(); state.scores=Object.fromEntries(PLAYER_NAMES.map(n=>[n,0])); state.roundScored=false; }},true);
-  window.ShitHeadSolo = {choose, step, stop, get active(){return active;}};
+  window.ShitHeadSolo = {choose, step, stop, finishRound, canFinishRound, get finishing(){return finishing;}, get active(){return active;}};
   try { if(localStorage.getItem(ACTIVE)==='1' && valid(read())) resume(); } catch {}
 
   async function prepareOffline() {
