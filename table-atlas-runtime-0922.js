@@ -107,7 +107,9 @@
     return frame;
   }
 
+  let pickerEvents;
   function closePicker() {
+    pickerEvents?.abort();
     document.querySelector('.drink-picker')?.remove();
   }
 
@@ -147,6 +149,7 @@
       button.append(label);
 
       button.addEventListener('click', () => {
+        if (!canEdit(name)) { closePicker(); return; }
         if (state.players?.[name]) state.players[name].drink = id;
         localStorage.setItem(`shithead-drink-${name}`, id);
         closePicker();
@@ -156,7 +159,10 @@
       grid.append(button);
     });
 
-    picker.append(title, grid);
+    const done = document.createElement('button');
+    done.type = 'button'; done.className = 'drink-picker-close'; done.textContent = 'Done';
+    done.addEventListener('click', closePicker);
+    picker.append(title, done, grid);
     document.body.append(picker);
     const rect = anchor.getBoundingClientRect();
     const box = picker.getBoundingClientRect();
@@ -167,13 +173,14 @@
     picker.style.left = `${left}px`;
     picker.style.top = `${Math.max(12, top)}px`;
 
-    setTimeout(() => {
-      document.addEventListener('pointerdown', function outside(event) {
-        if (picker.contains(event.target) || anchor.contains(event.target)) return;
-        closePicker();
-        document.removeEventListener('pointerdown', outside);
-      });
-    }, 0);
+    pickerEvents = new AbortController();
+    const signal = pickerEvents.signal;
+    document.addEventListener('pointerdown', event => {
+      if (!picker.contains(event.target) && !anchor.contains(event.target)) closePicker();
+    }, { signal });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closePicker();
+    }, { signal });
   }
 
   makeBeerMat = function makeDirectAssetBeerMat0926(name, extraClass = '', editable = false) {
@@ -197,6 +204,14 @@
     if (coasterImage?.complete) showRealCoaster();
 
     mat.append(directVisual(drink.file, 'beer-mat-drink-asset', drink.icon));
+    const mobileIcon = document.createElement('span');
+    mobileIcon.className = 'mobile-drink-icon'; mobileIcon.textContent = 'Drink';
+    mobileIcon.setAttribute('aria-hidden', 'true');
+    const mobileLabel = document.createElement('span');
+    mobileLabel.className = 'mobile-drink-label';
+    mobileLabel.textContent = drink.label;
+    mat.append(mobileIcon, mobileLabel);
+    mat.title = editableNow ? 'Tap to choose your drink' : `${drink.label} · choose during setup`;
     mat.setAttribute('aria-label', `${publicName(name)}: ${drink.label}${editableNow ? '. Click to choose drink.' : ''}`);
     if (editableNow) mat.addEventListener('click', () => openPicker(name, mat));
     return mat;

@@ -1,0 +1,67 @@
+const { test, expect } = require('@playwright/test');
+const fs = require('node:fs');
+
+test('mobile round popup redeals with scores, quits to mode selection, and drinks remain usable', async ({ page }) => {
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.route('https://unpkg.com/**', r => r.fulfill({ contentType: 'application/javascript', body: fs.readFileSync('tests/functional/fake-peer.js', 'utf8') }));
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto('/index.html');
+  await page.waitForFunction(() => !!window.ShitHeadMultiplayer && document.querySelector('.self-beer-mat .mobile-drink-label'));
+  await page.locator('#soloPlay').click();
+  await page.locator('#soloNew').click();
+  await page.locator('.self-beer-mat').click();
+  await expect(page.locator('.drink-picker')).toBeVisible();
+  const box = await page.locator('.drink-picker').boundingBox();
+  expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(320);
+  expect(box.y).toBeGreaterThanOrEqual(0); expect(box.y + box.height).toBeLessThanOrEqual(640);
+  await page.locator('.drink-picker-option[data-drink="coffee"]').click();
+  await expect(page.locator('.self-beer-mat .mobile-drink-label')).toHaveText('Coffee');
+  await page.locator('.self-beer-mat').click();
+  await page.locator('.drink-picker-close').click();
+  await expect(page.locator('.drink-picker')).toHaveCount(0);
+  const finish = () => page.evaluate(() => {
+    // A complete deck in a terminal position keeps the solo save valid.
+    const cards = [...state.drawPile, ...state.discard, ...state.burnPile];
+    for (const name of PLAYER_NAMES) {
+      const p = state.players[name]; cards.push(...p.hand);
+      if (p.tableSlots) cards.push(...p.tableSlots.flatMap(s => [s.faceUp, s.faceDown]).filter(Boolean));
+      else cards.push(...p.faceUp, ...p.faceDown);
+      p.hand = []; p.faceUp = []; p.faceDown = [];
+      p.tableSlots = [0,1,2].map(() => ({faceUp:null,faceDown:null}));
+    }
+    state.shitHead = PLAYER_NAMES[1]; state.players[state.shitHead].hand = [cards.pop()];
+    state.burnPile = cards; state.drawPile = []; state.discard = [];
+    state.finishOrder = PLAYER_NAMES.filter(n => n !== state.shitHead);
+    state.phase = 'gameover'; state.roundScored = false; state.lastMessage = 'Game over.'; render();
+  });
+  await finish();
+  await expect(page.locator('#roundOverDialog')).toBeVisible();
+  await page.screenshot({ path: 'artifacts/round-popup-0942.png' });
+  const scores = await page.evaluate(() => ({...state.scores}));
+  await page.locator('#roundNewDeal').click();
+  await expect(page.locator('#roundOverDialog')).not.toBeVisible();
+  expect(await page.evaluate(() => state.phase)).toBe('setup');
+  expect(await page.evaluate(() => state.scores)).toEqual(scores);
+  expect(await page.evaluate(() => PLAYER_NAMES.filter(n => n !== state.viewer).every(n => state.setupReady[n]))).toBe(true);
+  await page.screenshot({ path: 'artifacts/mobile-drinks-0942.png', fullPage: true });
+  await finish();
+  await expect(page.locator('#roundOverDialog')).toBeVisible();
+  await page.locator('#roundQuit').click();
+  await expect(page.locator('#gameStartDialog')).toBeVisible();
+  expect(await page.evaluate(() => window.ShitHeadSolo.active)).toBe(false);
+  await page.screenshot({ path: 'artifacts/start-screen-0942.png' });
+  await page.locator('#startSolo').click();
+  await expect(page.locator('#soloDialog')).toBeVisible();
+  await expect(page.locator('#soloResume')).toBeVisible();
+  await page.locator('#soloClose').click();
+  await expect(page.locator('#gameStartDialog')).toBeVisible();
+  await page.locator('#startOnline').click();
+  await expect(page.locator('#mpCreate')).toBeVisible();
+  await page.locator('#mpClose').click();
+  await expect(page.locator('#gameStartDialog')).toBeVisible();
+  await page.locator('#startSolo').click();
+  await page.locator('#soloNew').click();
+  await expect(page.locator('#gameStartDialog')).not.toBeVisible();
+  await expect(page.locator('.setup-ready')).toBeVisible();
+  expect(errors).toEqual([]);
+});

@@ -404,6 +404,12 @@ test('table stacks, blind play, burns, privacy, gameover and score stay synchron
     await expect(page.locator('.finish-turn')).toBeHidden();
   }
 
+  for (const page of pages) {
+    await expect(page.locator('#roundOverDialog')).toBeVisible();
+    if (page === oliver) await expect(page.locator('#roundNewDeal')).toBeVisible();
+    else await expect(page.locator('#roundNewDeal')).toBeHidden();
+    await page.keyboard.press('Escape');
+  }
   step('only the Shit Head can choose to reveal remaining bottom cards');
   await expect(chris.locator('.reveal-shithead')).toBeVisible();
   await expect(oliver.locator('.reveal-shithead')).toBeHidden();
@@ -418,8 +424,7 @@ test('table stacks, blind play, burns, privacy, gameover and score stay synchron
   }
 
   step('new deal preserves the shared tally and arms the following round for scoring');
-  await oliver.locator('#tableMenuButton').click();
-  await oliver.locator('#menuNewDeal').click();
+  await oliver.locator('#roundDealAgain').click();
   await Promise.all(pages.map((page) => page.waitForFunction(() => (
     state.phase === 'setup'
     && state.roundScored === false
