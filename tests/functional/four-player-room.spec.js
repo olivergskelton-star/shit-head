@@ -84,6 +84,30 @@ test('four humans occupy all seats, scores survive a seat rejoin, and solo has t
   await new Promise((resolve) => setTimeout(resolve, 500));
   await Promise.all(pages.map((page) => page.waitForFunction(() => state.phase === 'play')));
 
+  // A client reaction reaches all four browsers at that player's relative seat,
+  // survives an ordinary render, and cannot mutate or repeatedly flash the game.
+  const signature = () => host.evaluate(() => JSON.stringify({players:state.players,discard:state.discard,currentPlayer:state.currentPlayer,scores:state.scores}));
+  const beforeReaction = await signature();
+  await fourth.locator('#seatReact').click();
+  await fourth.locator('[data-reaction="cheers"]').click();
+  for (const page of pages) {
+    await expect(page.locator('.player-notepad[data-player="Player 4"] .seat-callout')).toHaveText('🍻');
+    await expect(page.locator('.seat-turn-tag')).toHaveCount(1);
+  }
+  await host.evaluate(() => { render(); window.ShitHeadMultiplayer.publishState(); });
+  await fourth.evaluate(() => {
+    window.ShitHeadMultiplayer.sendReaction('laugh');
+    window.ShitHeadMultiplayer.sendReaction('<script>');
+  });
+  await expect(host.locator('.player-notepad[data-player="Player 4"] .seat-callout')).toHaveText('🍻');
+  expect(await signature()).toBe(beforeReaction);
+  await expect(host.locator('.seat-callout')).toHaveCount(0,{timeout:4000});
+  await host.evaluate(() => { render(); window.ShitHeadMultiplayer.publishState(); });
+  await expect(fourth.locator('.seat-callout')).toHaveCount(0);
+  await host.locator('#seatReact').click();
+  await host.locator('[data-reaction="clap"]').click();
+  for (const page of pages) await expect(page.locator('.player-notepad[data-player="Oliver"] .seat-callout')).toHaveText('👏');
+
   await host.evaluate(() => {
     state.scores['Player 4'] = 3;
     render();

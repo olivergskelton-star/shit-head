@@ -6,6 +6,12 @@
 // - with no hand, any visible face-up card OR any exposed face-down card may be used;
 // - players with no cards anywhere are OUT and are skipped.
 (() => {
+  // Public outcomes only: never attach a hand, drawn card, or available move.
+  let eventSequence = 0;
+  function tableEvent(player, kind, count = 0) {
+    state.tableEvent = { id: `${Date.now()}-${++eventSequence}`, at: Date.now(), player, kind, count };
+  }
+
   function ensurePrivateSelection() {
     if (!Object.prototype.hasOwnProperty.call(state, 'selectedRefs')) {
       Object.defineProperty(state, 'selectedRefs', {
@@ -282,6 +288,7 @@
     syncLegacyArrays(name);
     clearSelection();
     state.lastMessage = `${publicName(name)} picked up ${tableCards.length + pileCards.length} cards.`;
+    tableEvent(name, 'pickup', tableCards.length + pileCards.length);
     advanceTurn(name);
     render();
     return true;
@@ -389,6 +396,7 @@
     }
 
     const { cards, rank } = check;
+    tableEvent(name, 'play', cards.length);
     applyPlayedCards(name, check.refs);
     cards.forEach((card) => state.discard.push(card));
 
@@ -404,13 +412,14 @@
 
     if (cleared) {
       const burnedCount = state.discard.length;
+      tableEvent(name, rank === '8' ? 'ofcom' : 'burn', burnedCount);
       if (typeof burnDiscardPile === 'function') burnDiscardPile();
       else state.discard = [];
       state.followUpRank = null;
       state.lastMessage = rank === '10'
         ? `${n} burned ${burnedCount} cards with a 10 — go again.`
         : rank === '8'
-          ? `${n} burned the pile with three 8s — go again.`
+          ? `Ofcom! ${n} burned the pile with three 8s — go again.`
           : `${n} burned the pile with four ${rank}s — go again.`;
 
       if (becameOut) {
@@ -464,6 +473,7 @@
     const player = state.players[name];
     const slots = ensureTableSlots(name);
     const card = slots[slotIndex].faceDown;
+    tableEvent(name, 'play', 1);
     slots[slotIndex].faceDown = null;
     syncLegacyArrays(name);
     clearSelection();
@@ -478,6 +488,7 @@
       // The failed card enters a private hand. Keep the shared message and ticker
       // to the public consequence only, without preserving card identities.
       state.lastMessage = `${publicName(name)} picked up ${pickedUp} card${pickedUp === 1 ? '' : 's'}.`;
+      tableEvent(name, 'pickup', pickedUp);
       advanceTurn(name);
       render();
       return true;
@@ -491,12 +502,13 @@
 
     if (cleared) {
       const burnedCount = state.discard.length;
+      tableEvent(name, rank === '8' ? 'ofcom' : 'burn', burnedCount);
       if (typeof burnDiscardPile === 'function') burnDiscardPile();
       else state.discard = [];
       state.lastMessage = rank === '10'
         ? `${n} turned over ${cardText(card)} and burned ${burnedCount} cards — go again.`
         : rank === '8'
-          ? `${n} turned over ${cardText(card)} and completed three 8s — pile burned, go again.`
+          ? `Ofcom! ${n} turned over ${cardText(card)} and completed three 8s — pile burned, go again.`
           : `${n} turned over ${cardText(card)} and completed four ${rank}s — pile burned, go again.`;
 
       if (becameOut) {
@@ -555,6 +567,7 @@
     state.discard = [];
     clearSelection();
     state.lastMessage = `${publicName(name)} picked up ${count} card${count === 1 ? '' : 's'}.`;
+    tableEvent(name, 'pickup', count);
     advanceTurn(name);
     render();
   };
@@ -565,6 +578,7 @@
     state.followUpRank = null;
     clearSelection();
     state.lastMessage = `${publicName(name)} finished the ${rank}s.`;
+    tableEvent(name, 'finish');
     advanceTurn(name);
     render();
   };
@@ -800,6 +814,7 @@
     state.finishOrder = [];
     state.shitHead = null;
     state.shitHeadReveal = false;
+    state.tableEvent = null;
     clearSelection();
     PLAYER_NAMES.forEach((name) => {
       if (state.players?.[name]) delete state.players[name].tableSlots;
