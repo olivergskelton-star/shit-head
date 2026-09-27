@@ -183,3 +183,14 @@
  .table-menu .touch-button-preference{display:flex;grid-column:1/-1;align-items:center;gap:12px;min-height:44px;font-size:14px;line-height:1.4;cursor:pointer}
  .touch-button-preference input{width:22px;height:22px;flex:none;accent-color:#ebcd8a}
 }
+
+/* Ready is a secondary setup control, sized to its label rather than the table. */
+#table .play-actions.setup-actions{width:max-content!important;min-width:0!important;max-width:min(420px,94%)!important;padding:0!important;gap:10px!important;background:none!important;box-shadow:none!important}
+#table .play-actions.setup-actions .setup-ready{flex:0 0 auto!important;width:auto!important;min-width:78px!important;min-height:44px!important;padding:8px 12px!important;font-size:12px!important;line-height:1.2!important;font-weight:600!important;letter-spacing:.02em!important;border:1px solid #c9aa7080!important;border-radius:10px!important;background:#211c1570!important;color:#fff4df!important;box-shadow:none!important}
+#table .play-actions.setup-actions .setup-hint{flex:1 1 auto!important;min-width:0!important;max-width:280px!important;font-size:11px!important;line-height:1.35!important;text-align:left!important;color:#d2c5b0}
+@media(max-width:700px){
+ #table .play-actions.setup-actions{width:100%!important;max-width:100%!important;flex-wrap:nowrap!important;justify-content:flex-start!important}
+ #table .play-actions.setup-actions .setup-hint{max-width:none!important}
+}
+
+@media(max-width:700px){body[data-game-phase="setup"] #table .mobile-turn-status{display:none!important}}
