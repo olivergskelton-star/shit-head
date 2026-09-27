@@ -172,17 +172,23 @@
     hand?.before(label);
     const actions = playerSeat.querySelector('.play-actions');
     const sort = playerSeat.querySelector('.sort-hand');
-    // Grid positions below work with existing direct children at every phase.
     if (sort) sort.hidden = n === 0;
     if (actions) actions.setAttribute('aria-label', state.phase === 'setup' ? 'Arrange your cards and get ready' : 'Your turn actions');
-    turnMessage.textContent = state.phase === 'setup' ? 'Arrange your cards, then press Ready'
-      : state.phase === 'lobby' ? 'Invite your friends · up to four players'
+    // Keep Ready directly below Sort, outside the card rows. Both retain their
+    // existing handlers; the setup renderer removes Ready once this seat is ready.
+    if (state.phase === 'setup' && sort && actions) {
+      const tools = document.createElement('div');
+      tools.className = 'setup-hand-tools';
+      sort.before(tools);
+      tools.append(sort, actions);
+    }
+    turnMessage.textContent = state.phase === 'lobby' ? 'Invite your friends · up to four players'
       : state.phase === 'gameover' ? 'Round complete' : '';
     const canFinish = !!window.ShitHeadSolo?.canFinishRound();
     const finishing = canFinish && window.ShitHeadSolo.finishing;
     // Turn ownership belongs on the name cards. Never announce a hidden-hand
     // follow-up opportunity to other players through the shared banner.
-    turn.hidden = state.phase === 'play' && !canFinish;
+    turn.hidden = state.phase === 'setup' || (state.phase === 'play' && !canFinish);
     document.body.classList.toggle('solo-player-out', canFinish);
     soloFinish.hidden = !canFinish;
     finishButton.textContent = finishing ? 'Finishing… · slow down' : 'Finish round »';

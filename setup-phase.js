@@ -166,21 +166,15 @@ function renderSetupActions() {
 
   actions.replaceChildren();
   actions.classList.add("visible", "setup-actions");
+  actions.hidden = !!state.setupReady[state.viewer];
+  if (actions.hidden) return;
 
   const ready = document.createElement("button");
   ready.type = "button";
   ready.className = "setup-ready";
-  ready.textContent = state.setupReady[state.viewer] ? "READY ✓" : "READY";
-  ready.disabled = state.setupReady[state.viewer];
+  ready.textContent = "Ready";
   ready.addEventListener("click", () => markSetupReady(state.viewer));
   actions.append(ready);
-
-  const hint = document.createElement("span");
-  hint.className = "setup-hint";
-  hint.textContent = state.setupReady[state.viewer]
-    ? `Ready #${state.setupReadyOrder.indexOf(state.viewer) + 1}. Waiting for the others.`
-    : `Opening hand: ${state.players[state.viewer].hand.length} cards. Click a hand card, then click a face-up table card to swap. Repeat as needed, then press READY.`;
-  actions.append(hint);
 }
 
 function renderSetupStatus() {
