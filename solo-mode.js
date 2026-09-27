@@ -449,8 +449,6 @@
     previousRender();
     if (!active) return;
     viewerSelect.disabled = true;
-    const hint = playerSeat.querySelector('.setup-hint');
-    if (hint && !state.setupReady[state.viewer]) hint.textContent = 'Swap a hand card with a face-up card, then press READY.';
     const seats = seatingForViewer();
     for (const [element,name] of [[opponentLeft,seats.left],[opponentTop,seats.top],[opponentRight,seats.right]]) {
       if (!element || !name) continue;
