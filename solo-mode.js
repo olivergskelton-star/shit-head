@@ -452,11 +452,13 @@
     const seats = seatingForViewer();
     for (const [element,name] of [[opponentLeft,seats.left],[opponentTop,seats.top],[opponentRight,seats.right]]) {
       if (!element || !name) continue;
-      let label = element.querySelector('.cpu-label');
-      if (!label) { label=document.createElement('span'); label.className='cpu-label'; element.append(label); }
       const notepadName = document.querySelector(`.player-notepad[data-player="${name}"] .notepad-name`);
-      if (notepadName) notepadName.textContent = publicName(name) + ' · CPU';
-      label.textContent = `CPU${state.phase==='play' && state.currentPlayer===name ? ' · thinking…' : ''}`;
+      if (notepadName) {
+        notepadName.textContent = publicName(name);
+        const label = document.createElement('span');
+        label.className = 'cpu-label'; label.textContent = ' · CPU';
+        notepadName.append(label);
+      }
     }
     save(); schedule();
   };
