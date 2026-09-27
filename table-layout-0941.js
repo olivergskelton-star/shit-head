@@ -87,7 +87,7 @@
   const start = document.createElement('dialog');
   start.id = 'gameStartDialog'; start.className = 'round-over game-start';
   start.setAttribute('aria-labelledby', 'gameStartTitle');
-  start.innerHTML = `<p class="eyebrow">Red wine &amp; cards</p><h2 id="gameStartTitle">S**t Head</h2>
+  start.innerHTML = `<h2 id="gameStartTitle">S**t Head</h2>
     <p>Pull up a chair.</p><div class="round-over-actions">
     <button type="button" id="startSolo">Play solo</button>
     <button type="button" id="startOnline">Play online</button></div>

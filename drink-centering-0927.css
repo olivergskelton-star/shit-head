@@ -15,3 +15,30 @@
   .beer-mat[data-drink="white-wine"] .beer-mat-drink-asset { bottom: 47%; }
   .beer-mat[data-drink="martini"] .beer-mat-drink-asset { bottom: 46%; left: 49%; }
 }
+
+/* The viewer's drink scales around its physical base, not the transparent
+   canvas edge. Percentages locate that base inside each square source PNG. */
+@media (min-width: 701px) {
+  #table .self-beer-mat .beer-mat-drink-asset {
+    left: 50%;
+    top: 46%;
+    bottom: auto;
+    height: auto;
+    transform-origin: var(--drink-base-x, 50%) var(--drink-base-y, 90%);
+    transform: translate(calc(-1 * var(--drink-base-x, 50%)), calc(-1 * var(--drink-base-y, 90%))) scale(var(--seat-drink-scale, 1)) rotate(var(--drink-rotate, 0deg));
+  }
+  .self-beer-mat[data-drink="coffee"] { --drink-base-x: 40%; --drink-base-y: 79%; }
+  .self-beer-mat[data-drink="tea"] { --drink-base-x: 40%; --drink-base-y: 82%; }
+  .self-beer-mat[data-drink="herbal-tea"] { --drink-base-x: 41%; --drink-base-y: 85%; }
+  .self-beer-mat[data-drink="milk"] { --drink-base-y: 82%; }
+  .self-beer-mat[data-drink="jd-coke"] { --drink-base-y: 92%; }
+  .self-beer-mat[data-drink="lemonade"] { --drink-base-y: 94%; }
+  .self-beer-mat[data-drink="lager"] { --drink-base-y: 92%; }
+  .self-beer-mat[data-drink="craft-beer"] { --drink-base-y: 94%; }
+  .self-beer-mat[data-drink="guinness"] { --drink-base-y: 90%; }
+  .self-beer-mat[data-drink="mojito"] { --drink-base-y: 94%; }
+  .self-beer-mat[data-drink="pina-colada"] { --drink-base-x: 49%; --drink-base-y: 90%; }
+  .self-beer-mat[data-drink="red-wine"] { --drink-base-y: 85%; }
+  .self-beer-mat[data-drink="white-wine"] { --drink-base-y: 88%; }
+  .self-beer-mat[data-drink="martini"] { --drink-base-y: 84%; }
+}
