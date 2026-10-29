@@ -70,6 +70,9 @@ test('Finish round is available only once the solo human is out and settles one 
  await position(page,{hands:[[],['10♠'],['4♣'],[]],pile:['6♦'],current:1,solo:true});
  await expect(page.locator('#soloFinishRound')).toBeVisible();
  await page.locator('#soloFinishRound').click();
+ await expect(page.locator('#roundDealAgain')).toBeVisible();
+ await expect(page.locator('#roundOverDialog')).not.toBeVisible();
+ await page.locator('#roundDealAgain').click();
  await expect(page.locator('#roundOverDialog')).toBeVisible();
  expect(await page.evaluate(()=>state.shitHead)).toBe('Chris');
  expect(await page.evaluate(()=>Object.values(state.scores).reduce((a,b)=>a+b,0))).toBe(1);
