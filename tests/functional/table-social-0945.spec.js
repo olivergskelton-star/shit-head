@@ -81,3 +81,42 @@ test('normal CPU actions wait 1.5 seconds and a pickup leaves 2.2 seconds to rea
   await page.clock.runFor(20);
   expect(await page.evaluate(() => state.tableEvent.id)).not.toBe(id);
 });
+
+test('public celebrations queue, survive rerenders, fit phones and never reopen round options', async ({page}) => {
+  await page.setViewportSize({width:320,height:640});
+  await position(page);
+  await page.evaluate(() => {
+    state.tableEvent={id:'party-1',at:Date.now(),player:'Dan',kind:'ofcom',count:8};
+    render();
+  });
+  await expect(page.locator('.celebration-title')).toHaveText('OFCOM! THREE EIGHTS!');
+  await expect(page.locator('.celebration-detail')).toContainText('Dan burns the pile');
+  const bounds=await page.locator('.table-celebration').boundingBox();
+  expect(bounds.x).toBeGreaterThanOrEqual(0);
+  expect(bounds.x+bounds.width).toBeLessThanOrEqual(320);
+  await page.evaluate(() => {
+    state.finishOrder=['Chris']; render(); render();
+  });
+  // The current moment is not overwritten by a second public outcome.
+  await expect(page.locator('.celebration-title')).toHaveText('OFCOM! THREE EIGHTS!');
+  await page.locator('.celebration-dismiss').click();
+  await expect(page.locator('.celebration-title')).toContainText('FIRST OUT!');
+  await expect(page.locator('.celebration-detail')).toContainText('Chris wins');
+  await page.locator('.celebration-dismiss').click();
+  await expect(page.locator('.table-celebration')).toBeHidden();
+  await page.evaluate(() => render());
+  await expect(page.locator('.table-celebration')).toBeHidden();
+  await page.evaluate(() => {state.phase='gameover';state.shitHead='Dan';render();});
+  await expect(page.locator('.celebration-title')).toHaveText('ROUND OVER!');
+  await expect(page.locator('#roundOverDialog')).toBeHidden();
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await expect(page.locator('.celebration-confetti').first()).toBeHidden();
+  await page.evaluate(() => {state.phase='setup'; render();});
+  await expect(page.locator('.table-celebration')).toBeHidden();
+  await position(page);
+  await page.evaluate(() => {
+    state.tableEvent={id:'old-party',at:Date.now()-10000,player:'Dan',kind:'burn',count:4};
+    render();
+  });
+  await expect(page.locator('.table-celebration')).toBeHidden();
+});
