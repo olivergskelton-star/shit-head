@@ -1,0 +1,25 @@
+name: Table celebration checks
+on:
+  pull_request:
+    paths:
+      - 'table-social-0945.js'
+      - 'table-social-0945.css'
+      - 'tests/functional/table-social-0945.spec.js'
+      - '.github/workflows/table-celebrations.yml'
+jobs:
+  celebrations:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/functional/table-social-0945.spec.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: celebration-previews
+          path: artifacts/*.png
+          if-no-files-found: ignore

@@ -5,6 +5,61 @@
   const labels = { laugh: 'Laugh', wow: 'Wow', ouch: 'Ouch', cheers: 'Cheers', clap: 'Well played' };
   const bubbles = new Map();
   let seenEvent = null, room = '', lastTurn = '', cooldownUntil = 0, cooldownTimer;
+  // Every browser derives these moments from the same public room snapshot.
+  let knownOut = new Set(state.finishOrder || []), previousPhase = state.phase;
+  let momentTimer = null, activeMoment = null;
+  const moments = [];
+  const celebration = document.createElement('aside');
+  celebration.className = 'table-celebration';
+  celebration.hidden = true;
+  celebration.setAttribute('aria-label', 'Table announcement');
+  const icon = document.createElement('span');
+  icon.className = 'celebration-icon'; icon.setAttribute('aria-hidden', 'true');
+  const copy = document.createElement('div');
+  const headline = document.createElement('strong');
+  headline.className = 'celebration-title';
+  const detail = document.createElement('span');
+  detail.className = 'celebration-detail';
+  copy.append(headline, detail);
+  const dismiss = document.createElement('button');
+  dismiss.type = 'button'; dismiss.className = 'celebration-dismiss';
+  dismiss.textContent = '\u00d7'; dismiss.setAttribute('aria-label', 'Dismiss table announcement');
+  celebration.append(icon, copy, dismiss);
+  document.body.append(celebration);
+  function nextMoment() {
+    clearTimeout(momentTimer);
+    celebration.querySelectorAll('.celebration-confetti').forEach(el => el.remove());
+    activeMoment = moments.shift() || null;
+    celebration.hidden = !activeMoment;
+    if (!activeMoment) return;
+    const moment = activeMoment;
+    celebration.dataset.kind = moment.kind;
+    icon.textContent = moment.icon;
+    headline.textContent = moment.title;
+    detail.textContent = moment.detail;
+    live.textContent = moment.title + '. ' + moment.detail;
+    if (['ofcom', 'burn', 'out', 'winner', 'round'].includes(moment.kind)) {
+      for (let i = 0; i < 16; i++) {
+        const piece = document.createElement('i');
+        piece.className = 'celebration-confetti';
+        piece.setAttribute('aria-hidden', 'true');
+        piece.style.setProperty('--piece', i);
+        piece.style.setProperty('--drift', ((i * 47) % 260 - 130) + 'px');
+        celebration.append(piece);
+      }
+    }
+    // Restart entrance only for a new event, never on a routine table render.
+    celebration.classList.remove('celebration-enter');
+    void celebration.offsetWidth;
+    celebration.classList.add('celebration-enter');
+    momentTimer = setTimeout(nextMoment, moment.kind === 'round' ? 5200 : 3800);
+  }
+  function announce(kind, title, text, symbol) {
+    if (moments.length >= 6) moments.shift();
+    moments.push({kind, title, detail:text, icon:symbol});
+    if (!activeMoment) nextMoment();
+  }
+  dismiss.onclick = nextMoment;
   const live = document.createElement('span');
   live.className = 'table-social-live'; live.setAttribute('role', 'status');
   document.body.append(live);
@@ -50,6 +105,9 @@
     live.textContent = `${publicName(player)}: ${label}`;
   }
   function clear() {
+    clearTimeout(momentTimer); moments.length = 0; activeMoment = null; celebration.hidden = true;
+    celebration.querySelectorAll('.celebration-confetti').forEach(el => el.remove());
+    knownOut = new Set(state.finishOrder || []); previousPhase = state.phase;
     for (const bubble of bubbles.values()) { clearTimeout(bubble.timer); bubble.element.remove(); }
     bubbles.clear(); seenEvent = state.tableEvent?.id;
     picker.close(); cooldownUntil = 0; clearTimeout(cooldownTimer); trigger.disabled = false;
@@ -82,11 +140,34 @@
       seenEvent = event.id;
       // Don't replay an old callout on reconnect, reload, or solo resume.
       if (Date.now() - event.at >= 0 && Date.now() - event.at < 3000) {
-        if (event.kind === 'ofcom') flash(event.player, 'Ofcom! 📺');
-        else if (event.kind === 'pickup' && event.count >= 10) flash(event.player, `Monster pickup! ${event.count} cards`);
-        else if (event.kind === 'burn') flash(event.player, 'Pile burned! 🔥');
+        if (event.kind === 'ofcom') {
+          flash(event.player, 'Ofcom! 📺');
+          announce('ofcom', 'OFCOM! THREE EIGHTS!', publicName(event.player) + ' burns the pile — ' + event.count + ' cards gone!', '📺');
+        }
+        else if (event.kind === 'pickup' && event.count >= 10) {
+          flash(event.player, `Monster pickup! ${event.count} cards`);
+          announce('pickup', 'MONSTER PICKUP!', publicName(event.player) + ' takes the lot. ' + event.count + ' cards!', '😱');
+        }
+        else if (event.kind === 'burn') {
+          flash(event.player, 'Pile burned! 🔥');
+          announce('burn', 'BURN, BABY, BURN!', publicName(event.player) + ' clears ' + event.count + ' cards from the table!', '🔥');
+        }
       }
     }
+    const finishOrder = state.finishOrder || [];
+    for (const player of finishOrder) {
+      if (knownOut.has(player)) continue;
+      knownOut.add(player);
+      const first = finishOrder.indexOf(player) === 0;
+      announce(first ? 'winner' : 'out', first ? 'FIRST OUT! WE HAVE A WINNER!' : 'ANOTHER PLAYER ESCAPES!',
+        publicName(player) + (first ? ' wins the round. Take a bow!' : ' is out. The pressure is on!'), first ? '🏆' : '👏');
+    }
+    if (state.phase === 'gameover' && previousPhase === 'play') {
+      announce('round', 'ROUND OVER!', state.shitHead
+        ? publicName(state.shitHead) + ' is the Shit Head this time. Rematch?'
+        : 'All cards played. What a round!', '🎉');
+    }
+    previousPhase = state.phase;
     paintBubbles();
   }
   window.ShitHeadTableSocial = {

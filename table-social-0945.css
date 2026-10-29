@@ -22,3 +22,23 @@
  #table .seat-callout{max-width:calc(100% + 8px);min-width:40px;box-sizing:border-box;font-size:14px;padding:7px}
  #seatReact{position:static;grid-row:7;grid-column:1/-1;justify-self:end}
 }
+
+/* Shared public moments sit above the table without taking over gameplay. */
+.table-celebration[hidden]{display:none!important}
+.table-celebration{position:fixed;top:max(18px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:9500;box-sizing:border-box;width:min(640px,calc(100vw - 24px));display:grid;grid-template-columns:64px minmax(0,1fr) 36px;gap:14px;align-items:center;padding:20px 16px 20px 22px;border:3px solid #ffdf78;border-radius:22px;background:linear-gradient(125deg,#43200e,#24170e 65%);color:#fff7de;box-shadow:0 14px 60px #0009,0 0 34px #ffbe3738;pointer-events:none;isolation:isolate}
+.table-celebration[data-kind="ofcom"]{background:linear-gradient(125deg,#4b2479,#201539);border-color:#e0bdff}
+.table-celebration[data-kind="pickup"]{background:linear-gradient(125deg,#752c26,#301515);border-color:#ffb18e}
+.table-celebration[data-kind="winner"],.table-celebration[data-kind="out"]{background:linear-gradient(125deg,#16574b,#142c26)}
+.celebration-icon{font-size:52px;line-height:1;text-align:center}
+.celebration-title{display:block;font:950 clamp(20px,3vw,30px)/1.08 system-ui;letter-spacing:.025em;text-wrap:balance;overflow-wrap:anywhere}
+.celebration-detail{display:block;margin-top:8px;font:600 15px/1.4 system-ui;overflow-wrap:anywhere}
+.celebration-dismiss{pointer-events:auto;width:36px;height:36px;min-height:36px;padding:0;border:1px solid #ffffff50;border-radius:50%;background:#0003;color:#fff;font:28px/1 system-ui;cursor:pointer}
+.celebration-dismiss:focus-visible{outline:3px solid white;outline-offset:3px}
+.celebration-enter{animation:celebration-arrive .35s cubic-bezier(.2,.8,.2,1) both}
+.celebration-confetti{position:absolute;left:50%;top:55%;width:8px;height:13px;border-radius:2px;background:#ffd45c;pointer-events:none;z-index:-1;animation:celebration-confetti 1.25s ease-out both;animation-delay:calc(var(--piece) * 20ms)}
+.celebration-confetti:nth-of-type(3n){background:#a2f0ce}
+.celebration-confetti:nth-of-type(3n + 1){background:#e8b8ff}
+@keyframes celebration-arrive{from{opacity:0;transform:translate(-50%,-18px) scale(.93)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+@keyframes celebration-confetti{0%{opacity:0;transform:translate(0,0) rotate(0)}15%{opacity:1}100%{opacity:0;transform:translate(var(--drift),110px) rotate(270deg)}}
+@media(max-width:700px){.table-celebration{top:max(8px,env(safe-area-inset-top));grid-template-columns:40px minmax(0,1fr) 36px;gap:9px;padding:14px 10px;border-radius:16px}.celebration-icon{font-size:34px}.celebration-title{font-size:20px}.celebration-detail{font-size:13px}.celebration-dismiss{align-self:start}}
+@media(prefers-reduced-motion:reduce){.celebration-enter{animation:none}.celebration-confetti{display:none}}
