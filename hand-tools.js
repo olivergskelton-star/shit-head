@@ -1,7 +1,7 @@
 // Hand tools: house-order sorting and large-hand presentation helpers.
 
 const HOUSE_HAND_ORDER = ["4", "5", "6", "7", "8", "9", "J", "Q", "K", "A", "2", "3", "10"];
-const HOUSE_SUIT_ORDER = ["", "", "", ""];
+const HOUSE_SUIT_ORDER = ["\u2660", "\u2665", "\u2666", "\u2663"];
 
 function sortHandFor(name) {
   const player = state.players[name];
@@ -76,7 +76,7 @@ function decorateHandTools() {
     sortButton = document.createElement("button");
     sortButton.type = "button";
     sortButton.className = "sort-hand";
-    sortButton.innerHTML = `<span aria-hidden="true">?</span> SORT`;
+    sortButton.innerHTML = `<span aria-hidden="true">&#8645;</span> SORT`;
     playerSeat.append(sortButton);
   }
 
