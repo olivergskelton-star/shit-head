@@ -28,10 +28,11 @@ test('real direct drink artwork stays visible in picker and after drink re-rende
   const oliverDrink = page.locator('.self-beer-mat[data-drink="red-wine"] .beer-mat-drink-asset');
   await expect(oliverDrink).toHaveCount(1);
   const oliverAnchor = await page.locator('.self-beer-mat[data-drink="red-wine"]').evaluate((mat) => ({
-    bottom: Number.parseFloat(getComputedStyle(mat.querySelector('.beer-mat-drink-asset')).bottom),
+    top: Number.parseFloat(getComputedStyle(mat.querySelector('.beer-mat-drink-asset')).top),
     matHeight: mat.clientHeight,
   }));
-  expect(oliverAnchor.bottom / oliverAnchor.matHeight).toBeCloseTo(0.42, 2);
+  // Build 0.9.27 anchors the physical drink base from the top of the mat.
+  expect(oliverAnchor.top / oliverAnchor.matHeight).toBeCloseTo(0.46, 2);
   await page.screenshot({ path: 'artifacts/oliver-drink-centering.png', fullPage: true });
 
   const self = page.locator('.self-beer-mat');
