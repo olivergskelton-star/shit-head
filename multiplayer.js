@@ -2,6 +2,10 @@
   const ROOM_SEATS = ["Oliver", "Dan", "Chris", "Player 4"];
   const MP = {
     peer: null,
+    session: 0,
+    roomReady: false,
+    connectionState: "idle",
+    joinTimer: null,
     role: "local",
     roomCode: "",
     player: "",
@@ -250,7 +254,7 @@
   function updateStartUi() {
     const inLobby = MP.role !== "local" && state.phase === "lobby";
     const connected = onlinePlayers();
-    const canStart = MP.role === "host" && connected.size >= 1 && connected.size <= ROOM_SEATS.length;
+    const canStart = MP.role === "host" && MP.roomReady && connected.size >= 1 && connected.size <= ROOM_SEATS.length;
 
     startButton.classList.toggle("multiplayer-hidden", !inLobby);
     if (!inLobby) {
@@ -275,6 +279,7 @@
     trigger.textContent = online ? `Room ${MP.roomCode}` : "Play online";
     roomCard.classList.toggle("multiplayer-hidden", !online);
     roomDisplay.textContent = MP.roomCode;
+    dialog.querySelector("#mpCopyInvite").disabled = MP.role === "host" && !MP.roomReady;
     inviteLink.value = MP.roomCode ? `${location.origin}${location.pathname}?room=${encodeURIComponent(MP.roomCode)}` : '';
 
     const connected = onlinePlayers();
@@ -286,7 +291,11 @@
       return pill;
     }));
 
-    if (MP.role === "host") {
+    if (MP.role === "host" && !MP.roomReady) {
+      roomStatus.textContent = "Connecting the room — wait before sharing the invite.";
+    } else if (MP.role === "client" && MP.connectionState !== "connected") {
+      roomStatus.textContent = "Joining the host — waiting for the table to accept you…";
+    } else if (MP.role === "host") {
       roomStatus.textContent = state.phase === "lobby"
         ? connected.size >= 1
           ? `${connected.size} player${connected.size === 1 ? "" : "s"} connected. Add more or start the game.`
@@ -341,7 +350,7 @@
   }
 
   function startOnlineGame() {
-    if (MP.role !== "host" || state.phase !== "lobby") return;
+    if (MP.role !== "host" || !MP.roomReady || state.phase !== "lobby") return;
     const connected = onlinePlayers();
     const activePlayers = ROOM_SEATS.filter((name) => connected.has(name));
     if (!activePlayers.length) {
@@ -366,6 +375,13 @@
   }
 
   function resetOnlineState() {
+    // Invalidate callbacks BEFORE close/destroy: PeerJS can emit close immediately.
+    // A deliberately closed or superseded connection must not cancel a new join.
+    MP.session += 1;
+    MP.roomReady = false;
+    MP.connectionState = "idle";
+    clearTimeout(MP.joinTimer); MP.joinTimer = null;
+    clearTimeout(MP.publishTimer); MP.publishTimer = null;
     reactionTimes.clear();
     window.ShitHeadTableSocial?.clear();
     try { MP.hostConnection?.close(); } catch (_) {}
@@ -508,8 +524,10 @@
   }
 
   function handleHostConnection(conn) {
+    const session = MP.session;
     MP.connections.set(conn, { player: null });
     conn.on("data", (data) => {
+      if (session !== MP.session || MP.role !== "host") return;
       if (!data || typeof data !== "object") return;
       if (data.type === "join") {
         const requested = ROOM_SEATS.includes(data.player) ? data.player : "";
@@ -518,7 +536,10 @@
         const requestedSeat = tokenSeat || requested || ROOM_SEATS.find((seat) => !MP.claimedPlayers.has(seat));
         const reconnecting = !!tokenSeat;
         if (!requestedSeat || MP.claimedPlayers.has(requestedSeat) || (!reconnecting && state.phase !== "lobby")) {
-          send(conn, { type: "rejected", message: reconnecting ? "That seat is already connected." : "The game has started. Use your rejoin PIN to reclaim your seat." });
+          send(conn, { type: "rejected", message: requestedSeat && MP.claimedPlayers.has(requestedSeat)
+            ? "That seat is already connected. Choose Any open seat, or close its other game tab first."
+            : state.phase === "lobby" ? "This table is full — all four seats are taken."
+            : "The game has started. Use your rejoin PIN to reclaim your seat." });
           return;
         }
         const pin = MP.seatTokens.get(requestedSeat) || randomToken();
@@ -573,6 +594,7 @@
       }
     });
     conn.on("close", () => {
+      if (session !== MP.session || MP.role !== "host") return;
       const meta = MP.connections.get(conn);
       if (meta?.player) MP.claimedPlayers.delete(meta.player);
       MP.connections.delete(conn);
@@ -601,14 +623,35 @@
       localStorage.setItem(`shithead-rejoin-${code}`, JSON.stringify({ roomCode: code, pin: MP.seatToken, displayName: MP.displayName, seat: MP.player }));
     } catch (_) {}
     updateRoomUi();
-    MP.peer = new Peer(peerIdForRoom(code));
-    MP.peer.on("open", () => {
+    const session = MP.session;
+    const peer = new Peer(peerIdForRoom(code));
+    MP.peer = peer;
+    const current = () => MP.session === session && MP.peer === peer && MP.role === "host";
+    peer.on("open", () => {
+      if (!current()) return;
+      MP.roomReady = true;
+      showError();
       updateRoomUi();
       publishState();
     });
-    MP.peer.on("connection", handleHostConnection);
-    MP.peer.on("error", (err) => {
-      showError(err?.type === "unavailable-id" ? "That room code collided. Close and create another room." : "Could not create the room. Try again.");
+    peer.on("connection", conn => {
+      if (!current()) { conn.close(); return; }
+      handleHostConnection(conn);
+    });
+    peer.on("disconnected", () => {
+      if (!current()) return;
+      MP.roomReady = false;
+      updateRoomUi();
+      // Signalling loss does not mean existing guest data channels have died.
+      if (!peer.destroyed && typeof peer.reconnect === "function") peer.reconnect();
+    });
+    peer.on("error", err => {
+      if (!current()) return;
+      MP.roomReady = false;
+      showError(err?.type === "unavailable-id"
+        ? "That room code is already in use. Create another room."
+        : "The room connection service is unavailable. Keep this tab open and try creating the room again.");
+      updateRoomUi();
     });
   }
 
@@ -619,6 +662,7 @@
     if (code.length !== 6) { showError("Enter the six-character room code."); return; }
     resetOnlineState();
     MP.role = "client";
+    MP.connectionState = "joining";
     MP.roomCode = code;
     MP.displayName = enteredDisplayName();
     MP.seatToken = enteredPin();
@@ -626,23 +670,42 @@
     MP.presentPlayers = new Set();
     newGameBtn.disabled = true;
     updateRoomUi();
-    MP.peer = new Peer();
-    MP.peer.on("open", () => {
-      const conn = MP.peer.connect(peerIdForRoom(code), { reliable: true });
+    const session = MP.session;
+    const peer = new Peer();
+    MP.peer = peer;
+    const current = () => MP.session === session && MP.peer === peer && MP.role === "client";
+    const failJoin = message => {
+      if (!current()) return;
+      resetOnlineState();
+      showError(message);
+      if (!dialog.open) dialog.showModal();
+    };
+    MP.joinTimer = setTimeout(() => failJoin("The host did not accept the connection. Keep the host's game tab open, check the room code, then try Join game again."), 20000);
+    peer.on("open", () => {
+      if (!current() || MP.hostConnection) return;
+      const conn = peer.connect(peerIdForRoom(code), { reliable: true });
       MP.hostConnection = conn;
-      conn.on("open", () => send(conn, {
+      conn.on("open", () => {
+        if (!current() || MP.hostConnection !== conn) return;
+        send(conn, {
         type: "join",
         player: MP.player,
         displayName: MP.displayName,
         rejoinPin: MP.seatToken,
-      }));
+      });
+      });
       conn.on("data", (data) => {
+        if (!current() || MP.hostConnection !== conn) return;
         if (!data || typeof data !== "object") return;
         if (data.type === "welcome") {
+          clearTimeout(MP.joinTimer); MP.joinTimer = null;
+          MP.connectionState = "connected";
+          showError();
           setViewer(data.player);
           MP.player = data.player;
           MP.displayName = data.displayName || MP.displayName;
           MP.seatToken = data.rejoinPin || MP.seatToken;
+          rejoinPinInput.value = MP.seatToken;
           state.displayNames[data.player] = MP.displayName;
           MP.presentPlayers = new Set(data.players || [data.player]);
           if (data.displayNames) state.displayNames = clone(data.displayNames);
@@ -663,17 +726,25 @@
         } else if (data.type === "action-result" && data.ok === false) {
           statusText.textContent = "The host rejected that action. The table has been resynchronised.";
         } else if (data.type === "rejected") {
-          showError(data.message || "Could not join that seat.");
-          resetOnlineState();
+          failJoin(data.message || "Could not join that seat.");
         }
       });
       conn.on("close", () => {
-        showError("Connection to the host was lost.");
-        resetOnlineState();
-        dialog.showModal();
+        if (!current() || MP.hostConnection !== conn) return;
+        failJoin(MP.connectionState === "connected"
+          ? "Connection to the host was lost. Keep the host tab open and use Join game to reconnect with your saved rejoin PIN."
+          : "Could not connect to the host. Keep the host's game tab open and try Join game again.");
       });
+      conn.on("error", () => failJoin("The direct connection to the host failed. Check both internet connections and try Join game again."));
     });
-    MP.peer.on("error", () => { showError("Could not join that room. Check the code and try again."); });
+    peer.on("error", err => {
+      if (!current()) return;
+      // A signalling outage can leave a working game channel intact.
+      if (MP.connectionState === "connected" && MP.hostConnection?.open) return;
+      failJoin(err?.type === "peer-unavailable"
+        ? "That room is not available. Ask the host to keep their game tab open and confirm the six-character code."
+        : "Could not establish the connection to the host. Check your connection and try Join game again.");
+    });
   }
 
   trigger.addEventListener("click", () => { showError(); updateRoomUi(); dialog.showModal(); });
@@ -701,7 +772,7 @@
     sendReaction,
     disconnect: resetOnlineState,
     startGame: startOnlineGame,
-    get status() { return { role: MP.role, roomCode: MP.roomCode, player: MP.player, players: [...onlinePlayers()] }; },
+    get status() { return { role: MP.role, roomCode: MP.roomCode, player: MP.player, roomReady: MP.roomReady, connectionState: MP.connectionState, players: [...onlinePlayers()] }; },
   };
   if (linkedRoom) dialog.showModal();
 })();
