@@ -48,12 +48,11 @@
       return;
     }
 
-    if (error.textContent) error.textContent = '';
     setHidden(actions, false);
 
     const primary = actions.querySelector('.room-lobby-primary');
     const players = Array.isArray(status.players) ? status.players : [];
-    const canStart = status.role === 'host' && players.length >= 1;
+    const canStart = status.role === 'host' && status.roomReady !== false && players.length >= 1;
     const inLobby = typeof state !== 'undefined' && state.phase === 'lobby';
 
     if (!inLobby) {
