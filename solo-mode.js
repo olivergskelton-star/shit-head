@@ -441,8 +441,9 @@
     if (!canFinishRound()) finishing = false;
     if (!active || paused || writing || document.hidden || document.querySelector('dialog[open]') || state.phase !== 'play' || state.currentPlayer === state.viewer) return;
     const event = state.tableEvent;
-    const bigMoment = event && Date.now() - event.at < 2200 && ['pickup','burn','ofcom'].includes(event.kind);
-    timer = setTimeout(() => { timer=null; if(active && !paused && !document.hidden && !document.querySelector('dialog[open]')) step(); }, finishing ? 24 : bigMoment ? 2200 : 1500);
+    const burnMoment = event && Date.now() - event.at < 3000 && ['burn','ofcom'].includes(event.kind);
+    const bigMoment = event && Date.now() - event.at < 2200 && event.kind === 'pickup';
+    timer = setTimeout(() => { timer=null; if(active && !paused && !document.hidden && !document.querySelector('dialog[open]')) step(); }, finishing ? 24 : burnMoment ? 3000 : bigMoment ? 2200 : 1500);
   }
   const previousRender = render;
   render = function renderSolo() {

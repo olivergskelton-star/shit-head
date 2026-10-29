@@ -27,6 +27,7 @@
 
     if (!discardPile) return;
 
+    const burnPreviews = [...discardPile.querySelectorAll('.burn-preview-card')];
     discardPile.replaceChildren();
     discardPile.classList.toggle('is-empty', state.discard.length === 0);
     discardPile.setAttribute('aria-label', `Pile, ${state.discard.length} card${state.discard.length === 1 ? '' : 's'}`);
@@ -37,7 +38,13 @@
       externalCount.classList.toggle('is-zero', state.discard.length === 0);
     }
 
-    if (!state.discard.length) return;
+    if (!state.discard.length) {
+      if (burnPreviews.length) {
+        discardPile.append(...burnPreviews);
+        discardPile.classList.remove('is-empty');
+      }
+      return;
+    }
 
     const visible = state.discard.slice(-4);
     visible.forEach((card, index) => {
@@ -129,6 +136,34 @@
     animation.finished.catch(() => {}).finally(() => ghost.remove());
   }
 
+  // Keep the public burn cards readable before sending them to the burn stack.
+  // This also runs on receiving browsers, where the authoritative pile is
+  // already empty by the time the snapshot arrives.
+  function showBurnCards(cards, burn) {
+    document.querySelectorAll('.burn-preview-card').forEach(el => el.remove());
+    const previews = cards.slice(-4).map((card, index, visible) => {
+      const el = makeCard(card);
+      el.classList.add('burn-preview-card');
+      el.setAttribute('aria-label', `Burned card: ${card.rank}${card.suit}`);
+      el.style.cssText = `position:absolute;left:${(index - (visible.length - 1) / 2) * 30}px;top:0;z-index:${100 + index};pointer-events:none`;
+      discardPile.append(el);
+      return {el, card};
+    });
+    discardPile.classList.remove('is-empty');
+    discardPile.setAttribute('aria-label', 'Pile burning — ' + cards.slice(-4).map(card => card.rank + card.suit).join(', '));
+    setTimeout(() => {
+      previews.forEach(({el, card}) => {
+        if (!el.isConnected) return;
+        animateGhost(card, el, burn, {duration: 650});
+        el.remove();
+      });
+      if (!state.discard.length && !discardPile.querySelector('.burn-preview-card')) {
+        discardPile.classList.add('is-empty');
+        discardPile.setAttribute('aria-label', 'Pile, 0 cards');
+      }
+    }, 1800);
+  }
+
   function animateStateChange(before, after) {
     if (!before || before.phase !== 'play' || (after.phase !== 'play' && after.phase !== 'gameover')) return;
 
@@ -138,9 +173,8 @@
     const burnDelta = after.burnCount - before.burnCount;
 
     if (burnDelta > 0 && after.discardCount === 0) {
-      const lastBurned = state.burnPile?.[state.burnPile.length - 1] || null;
-      animateGhost(lastBurned, actorSeat, discardPile, { duration: 210 });
-      animateGhost(null, discardPile, burn, { delay: 120, back: true, duration: 260 });
+      const burned = state.burnPile.slice(-burnDelta);
+      showBurnCards(burned, burn);
       return;
     }
 
