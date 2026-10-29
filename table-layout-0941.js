@@ -49,7 +49,9 @@
   roundActions.className = 'round-actions';
   roundActions.hidden = true;
   const again = document.createElement('button');
-  again.id = 'roundDealAgain'; again.type = 'button'; again.textContent = 'Deal again';
+  again.id = 'roundDealAgain'; again.type = 'button'; again.textContent = 'Round options';
+  again.setAttribute('aria-haspopup', 'dialog');
+  again.setAttribute('aria-controls', 'roundOverDialog');
   const waiting = document.createElement('span');
   waiting.textContent = 'Waiting for the host to deal again';
   roundActions.append(again, waiting);
@@ -67,13 +69,13 @@
   round.setAttribute('aria-labelledby', 'roundOverTitle');
   round.innerHTML = `<h2 id="roundOverTitle">Round over</h2><p id="roundOverResult"></p>
     <p id="roundOverHint"></p><div class="round-over-actions">
-    <button type="button" id="roundNewDeal" autofocus>New deal</button>
+    <button type="button" id="roundNewDeal">Deal again</button>
+    <button type="button" id="roundViewTable">Back to table</button>
     <button type="button" id="roundQuit">Quit</button></div>
     <small>Quit returns to the start screen and leaves any online room.</small>`;
   document.body.append(round);
   const next = round.querySelector('#roundNewDeal');
-  let offeredRound = false;
-  let scheduledRound = false;
+  round.querySelector('#roundViewTable').onclick = () => round.close();
   function canDealRound() {
     const role = window.ShitHeadMultiplayer?.status?.role;
     return state.phase === 'gameover' && (!role || role === 'local' || role === 'host');
@@ -82,7 +84,7 @@
     if (!canDealRound() || newGameBtn.disabled) return;
     round.close(); newGameBtn.click();
   }
-  again.onclick = nextRound;
+  again.onclick = () => { if (state.phase === 'gameover') round.showModal(); };
   next.onclick = nextRound;
   const start = document.createElement('dialog');
   start.id = 'gameStartDialog'; start.className = 'round-over game-start';
@@ -112,7 +114,7 @@
   start.addEventListener('cancel', event => event.preventDefault());
   document.addEventListener('close', () => {
     if (atStart && window.ShitHeadSolo?.active) {
-      atStart = false; offeredRound = false; updateRound();
+      atStart = false; updateRound();
     }
     if (atStart && !document.querySelector('dialog[open]')) start.showModal();
   }, true);
@@ -120,9 +122,15 @@
     const finished = state.phase === 'gameover';
     document.body.classList.toggle('round-finished', finished);
     roundActions.hidden = !finished;
-    if (!finished) { atStart = false; if (start.open) start.close(); offeredRound = false; if (round.open) round.close(); return; }
+    // The end-of-round menu owns the only visible deal action.
+    deal.hidden = finished;
+    newGameBtn.hidden = finished;
+    const reveal = document.querySelector('.reveal-shithead');
+    if (reveal) roundActions.prepend(reveal);
+    if (!finished) { atStart = false; if (start.open) start.close(); if (round.open) round.close(); return; }
     const allowed = canDealRound();
-    again.hidden = next.hidden = !allowed;
+    again.hidden = false;
+    next.hidden = !allowed;
     waiting.hidden = allowed;
     round.querySelector('#roundOverResult').textContent = state.shitHead
       ? `${state.shitHead === state.viewer ? 'You are' : `${publicName(state.shitHead)} is`} the Shit Head. Score: ${state.scores[state.shitHead] || 0}.`
@@ -130,17 +138,9 @@
     round.querySelector('#roundOverHint').textContent = allowed
       ? 'Another round? New deal keeps everyone’s scores.'
       : 'The host can deal the next round. Your scores are kept.';
-    // Wait for the remaining render wrappers (including multiplayer) to finish.
-    if (!offeredRound && !scheduledRound) {
-      scheduledRound = true;
-      setTimeout(() => {
-        scheduledRound = false;
-        if (state.phase !== 'gameover' || offeredRound || document.querySelector('dialog[open]')) return;
-        offeredRound = true; round.showModal();
-      }, 0);
-    }
+    // Leave the table and reveal control accessible until the player explicitly
+    // opens Round options. Renders and reveal actions must never reopen a modal.
   }
-  document.addEventListener('close', () => { if (state.phase === 'gameover' && !offeredRound) updateRound(); }, true);
 
   function updateMenuScores() {
     const scores = menu.querySelector('#tableMenuScores');

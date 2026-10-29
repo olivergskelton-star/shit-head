@@ -405,6 +405,8 @@ test('table stacks, blind play, burns, privacy, gameover and score stay synchron
   }
 
   for (const page of pages) {
+    await expect(page.locator('#roundOverDialog')).not.toBeVisible();
+    await page.locator('#roundDealAgain').click();
     await expect(page.locator('#roundOverDialog')).toBeVisible();
     if (page === oliver) await expect(page.locator('#roundNewDeal')).toBeVisible();
     else await expect(page.locator('#roundNewDeal')).toBeHidden();
@@ -425,6 +427,7 @@ test('table stacks, blind play, burns, privacy, gameover and score stay synchron
 
   step('new deal preserves the shared tally and arms the following round for scoring');
   await oliver.locator('#roundDealAgain').click();
+  await oliver.locator('#roundNewDeal').click();
   await Promise.all(pages.map((page) => page.waitForFunction(() => (
     state.phase === 'setup'
     && state.roundScored === false

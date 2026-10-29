@@ -35,6 +35,9 @@ test('mobile round popup redeals with scores, quits to mode selection, and drink
     state.phase = 'gameover'; state.roundScored = false; state.lastMessage = 'Game over.'; render();
   });
   await finish();
+  await expect(page.locator('#roundDealAgain')).toBeVisible();
+  await expect(page.locator('#roundOverDialog')).not.toBeVisible();
+  await page.locator('#roundDealAgain').click();
   await expect(page.locator('#roundOverDialog')).toBeVisible();
   await page.screenshot({ path: 'artifacts/round-popup-0942.png' });
   const scores = await page.evaluate(() => ({...state.scores}));
@@ -45,6 +48,9 @@ test('mobile round popup redeals with scores, quits to mode selection, and drink
   expect(await page.evaluate(() => PLAYER_NAMES.filter(n => n !== state.viewer).every(n => state.setupReady[n]))).toBe(true);
   await page.screenshot({ path: 'artifacts/mobile-drinks-0942.png', fullPage: true });
   await finish();
+  await expect(page.locator('#roundDealAgain')).toBeVisible();
+  await expect(page.locator('#roundOverDialog')).not.toBeVisible();
+  await page.locator('#roundDealAgain').click();
   await expect(page.locator('#roundOverDialog')).toBeVisible();
   await page.locator('#roundQuit').click();
   await expect(page.locator('#gameStartDialog')).toBeVisible();
@@ -54,6 +60,9 @@ test('mobile round popup redeals with scores, quits to mode selection, and drink
   await expect(page.locator('#soloDialog')).toBeVisible();
   await expect(page.locator('#soloResume')).toBeVisible();
   await page.locator('#soloResume').click();
+  await expect(page.locator('#roundDealAgain')).toBeVisible();
+  await expect(page.locator('#roundOverDialog')).not.toBeVisible();
+  await page.locator('#roundDealAgain').click();
   await expect(page.locator('#roundOverDialog')).toBeVisible();
   await expect(page.locator('#gameStartDialog')).not.toBeVisible();
   await page.locator('#roundQuit').click();
