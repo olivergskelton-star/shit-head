@@ -147,7 +147,7 @@
  #table .mobile-drink-icon{display:none}
  #table .self-beer-mat{width:76px!important;height:auto!important;min-height:48px!important;flex-direction:column}
  #table .self-beer-mat .mobile-drink-label{display:block;font:600 10px/1.2 system-ui;color:#fff4df;white-space:normal;text-align:center}
- #table .self-beer-mat.drink-editable .mobile-drink-label::after{content:' ?'}
+ #table .self-beer-mat.drink-editable .mobile-drink-label::after{content:' \25BE'}
  #table .seat-opponent .opponent-beer-mat{width:26px!important;height:26px!important;bottom:0!important;border:0!important;background:none!important;padding:0!important}
  #table .opponent-beer-mat .mobile-drink-label{display:block;font:500 10px/1.2 system-ui;color:#e1ceaf;text-align:center}
  .drink-picker.asset-drink-picker{position:fixed!important;box-sizing:border-box;top:auto!important;left:8px!important;right:8px!important;bottom:max(8px,env(safe-area-inset-bottom))!important;width:auto!important;max-width:none!important;max-height:75dvh!important;overflow-y:auto!important;padding:16px!important;border-radius:20px!important;z-index:10000!important}
