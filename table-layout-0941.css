@@ -147,7 +147,7 @@
  #table .mobile-drink-icon{display:none}
  #table .self-beer-mat{width:76px!important;height:auto!important;min-height:48px!important;flex-direction:column}
  #table .self-beer-mat .mobile-drink-label{display:block;font:600 10px/1.2 system-ui;color:#fff4df;white-space:normal;text-align:center}
- #table .self-beer-mat.drink-editable .mobile-drink-label::after{content:' ▾'}
+ #table .self-beer-mat.drink-editable .mobile-drink-label::after{content:' ?'}
  #table .seat-opponent .opponent-beer-mat{width:26px!important;height:26px!important;bottom:0!important;border:0!important;background:none!important;padding:0!important}
  #table .opponent-beer-mat .mobile-drink-label{display:block;font:500 10px/1.2 system-ui;color:#e1ceaf;text-align:center}
  .drink-picker.asset-drink-picker{position:fixed!important;box-sizing:border-box;top:auto!important;left:8px!important;right:8px!important;bottom:max(8px,env(safe-area-inset-bottom))!important;width:auto!important;max-width:none!important;max-height:75dvh!important;overflow-y:auto!important;padding:16px!important;border-radius:20px!important;z-index:10000!important}
@@ -206,4 +206,14 @@
 }
 @media(min-width:701px) and (max-height:760px){
  #table .seat-player>.player-notepad{bottom:2%!important}
+}
+
+/* Safari must be allowed to shrink the grid/flex items around the scrollport.
+   Large pickups keep full, tappable cards instead of shrinking rank slices. */
+#table .seat-player,#table .hand{min-width:0!important;box-sizing:border-box}
+#table .hand{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+@media(min-width:701px){
+ #table .hand.hand-large{display:flex!important;flex-wrap:nowrap!important;justify-content:flex-start!important;align-items:flex-end!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;gap:8px!important;padding:22px 8px 10px!important;scrollbar-width:thin;touch-action:pan-x}
+ #table .hand.hand-large button.card{flex:0 0 62px!important;width:62px!important;min-width:62px!important;margin:0!important;transform:none!important;min-height:96px!important}
+ #table .hand.hand-large button.card.selected,#table .hand.hand-large button.card.setup-selected{transform:translateY(-12px)!important}
 }
