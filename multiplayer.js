@@ -146,11 +146,35 @@
   }
   function enteredDisplayName() {
     const name = cleanDisplayName(displayNameInput.value || "Player");
-    try { localStorage.setItem('shithead-player-name', name); } catch {}
+    for (const storageName of ["sessionStorage", "localStorage"]) {
+      try { window[storageName].setItem('shithead-player-name', name); } catch (_) {}
+    }
     return name;
   }
   function enteredPin() {
     return String(rejoinPinInput.value || "").trim().toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 8);
+  }
+
+  // Keep each tab's seat separate, then fall back to the same player's saved
+  // seat after a tab is closed. A different name must not inherit another seat.
+  function savedRejoin(code) {
+    const name = cleanDisplayName(displayNameInput.value, "").toLowerCase();
+    for (const storageName of ["sessionStorage", "localStorage"]) {
+      try {
+        const saved = JSON.parse(window[storageName].getItem(`shithead-rejoin-${code}`) || "null");
+        if (saved?.roomCode === code && saved.role !== "host" && saved.pin
+          && (!displayNameInput.value.trim() || cleanDisplayName(saved.displayName).toLowerCase() === name)) return saved;
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  function saveRejoin() {
+    const saved = JSON.stringify({ roomCode: MP.roomCode, pin: MP.seatToken,
+      displayName: MP.displayName, seat: MP.player, role: MP.role });
+    for (const storageName of ["sessionStorage", "localStorage"]) {
+      try { window[storageName].setItem(`shithead-rejoin-${MP.roomCode}`, saved); } catch (_) {}
+    }
   }
 
   const trigger = document.createElement("button");
@@ -215,11 +239,13 @@
   const rejoinInfo = dialog.querySelector("#mpRejoinInfo");
   const playersEl = dialog.querySelector("#mpPlayers");
   const inviteLink = dialog.querySelector('#mpInviteLink');
-  try { displayNameInput.value = localStorage.getItem('shithead-player-name') || ''; } catch {}
+  for (const storageName of ["sessionStorage", "localStorage"]) {
+    try { displayNameInput.value ||= window[storageName].getItem('shithead-player-name') || ''; } catch (_) {}
+  }
   dialog.querySelector('#mpCopyInvite').onclick = async () => {
     try {
       await navigator.clipboard.writeText(inviteLink.value);
-      dialog.querySelector('#mpInviteStatus').textContent = 'Invite link copied — share it with your friends.';
+      dialog.querySelector('#mpInviteStatus').textContent = 'Invite link copied - share it with your friends.';
     } catch {
       inviteLink.focus(); inviteLink.select();
       dialog.querySelector('#mpInviteStatus').textContent = 'Select and copy this invite link.';
@@ -231,17 +257,39 @@
   const urlParams = new URLSearchParams(location.search);
   const linkedRoom = String(urlParams.get("room") || "").toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6);
   const linkedPin = String(urlParams.get("pin") || "").toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 8);
+  let pinRoomCode = linkedRoom;
+  let restoredPin = "";
   if (linkedRoom) roomInput.value = linkedRoom;
   if (linkedPin) rejoinPinInput.value = linkedPin;
   if (linkedPin) dialog.querySelector('.multiplayer-advanced').open = true;
-  if (linkedRoom && !displayNameInput.value) {
+  // A different player in another tab may have changed the shared name.
+  // On refresh, restore this tab's identity before matching its saved PIN.
+  if (linkedRoom && !linkedPin) {
     try {
-      const saved = JSON.parse(localStorage.getItem(`shithead-rejoin-${linkedRoom}`) || "null");
-      if (saved?.displayName) displayNameInput.value = saved.displayName;
-      if (!rejoinPinInput.value && saved?.pin) rejoinPinInput.value = saved.pin;
-      if (saved?.seat && ROOM_SEATS.includes(saved.seat)) playerSelect.value = saved.seat;
+      const saved = JSON.parse(sessionStorage.getItem(`shithead-rejoin-${linkedRoom}`) || "null");
+      if (saved?.roomCode === linkedRoom && saved.role === "client" && saved.pin && saved.displayName) {
+        displayNameInput.value = saved.displayName;
+      }
     } catch (_) {}
   }
+  function restoreRejoin(code) {
+    if (pinRoomCode && pinRoomCode !== code) {
+      rejoinPinInput.value = "";
+      restoredPin = "";
+    }
+    pinRoomCode = code;
+    const saved = savedRejoin(code);
+    if (restoredPin && rejoinPinInput.value === restoredPin && saved?.pin !== restoredPin) {
+      rejoinPinInput.value = "";
+      restoredPin = "";
+    }
+    if (!enteredPin() && saved?.pin) {
+      rejoinPinInput.value = saved.pin;
+      restoredPin = saved.pin;
+      if (!displayNameInput.value.trim()) displayNameInput.value = saved.displayName || "";
+    }
+  }
+  if (linkedRoom) restoreRejoin(linkedRoom);
 
   function showError(message = "") { errorText.textContent = message; }
 
@@ -266,7 +314,7 @@
     newGameBtn.disabled = true;
     if (MP.role === "host") {
       startButton.disabled = !canStart;
-      startButton.textContent = canStart ? `START GAME · ${connected.size} PLAYER${connected.size === 1 ? "" : "S"}` : "WAITING FOR HOST";
+      startButton.textContent = canStart ? `START GAME � ${connected.size} PLAYER${connected.size === 1 ? "" : "S"}` : "WAITING FOR HOST";
     } else {
       startButton.disabled = true;
       startButton.textContent = "WAITING FOR HOST";
@@ -287,14 +335,15 @@
       const pill = document.createElement("span");
       pill.className = `room-player${connected.has(name) ? " connected" : ""}`;
       const label = publicName(name);
-      pill.textContent = connected.has(name) ? `${label} ✓` : "Open seat";
+      pill.textContent = connected.has(name) ? `${label} V`
+        : state.phase !== "lobby" && PLAYER_NAMES.includes(name) ? `${label} - disconnected` : "Open seat";
       return pill;
     }));
 
     if (MP.role === "host" && !MP.roomReady) {
-      roomStatus.textContent = "Connecting the room — wait before sharing the invite.";
+      roomStatus.textContent = "Connecting the room - wait before sharing the invite.";
     } else if (MP.role === "client" && MP.connectionState !== "connected") {
-      roomStatus.textContent = "Joining the host — waiting for the table to accept you…";
+      roomStatus.textContent = "Joining the host - waiting for the table to accept you.";
     } else if (MP.role === "host") {
       roomStatus.textContent = state.phase === "lobby"
         ? connected.size >= 1
@@ -309,9 +358,11 @@
 
     if (rejoinInfo) {
       rejoinInfo.replaceChildren();
-      if (MP.seatToken) {
+      if (MP.role === "host") {
+        rejoinInfo.textContent = "This browser holds the game. Keep this host tab open while guests rejoin.";
+      } else if (MP.seatToken) {
         const copy = document.createElement("span");
-        copy.textContent = `Your rejoin PIN: ${MP.seatToken} · use it with this room code on another device. `;
+        copy.textContent = `Your rejoin PIN: ${MP.seatToken} � use it with this room code on another device. `;
         const link = document.createElement("a");
         link.href = rejoinLink(MP.roomCode, MP.seatToken);
         link.textContent = "Open your rejoin link";
@@ -343,7 +394,7 @@
     state.startingPlayer = null;
     state.currentPlayer = null;
     state.selected = [];
-    state.lastMessage = "Online table ready — add players or start when ready.";
+    state.lastMessage = "Online table ready - add players or start when ready.";
     if (typeof tickerReset === "function") tickerReset();
     MP.suppressPublish = false;
     render();
@@ -367,7 +418,7 @@
     state.phase = "setup";
     state.currentPlayer = null;
     state.startingPlayer = null;
-    state.lastMessage = "Cards dealt — arrange your face-up table cards, then press READY.";
+    state.lastMessage = "Cards dealt - arrange your face-up table cards, then press READY.";
     if (typeof tickerReset === "function") tickerReset();
     MP.suppressPublish = false;
     render();
@@ -527,22 +578,47 @@
     const session = MP.session;
     MP.connections.set(conn, { player: null });
     conn.on("data", (data) => {
-      if (session !== MP.session || MP.role !== "host") return;
+      if (session !== MP.session || MP.role !== "host" || !MP.connections.has(conn)) return;
       if (!data || typeof data !== "object") return;
       if (data.type === "join") {
+        // One connection can own only one seat; late/repeated joins cannot
+        // strand a second claimed seat on the same connection.
+        if (MP.connections.get(conn).player) return;
         const requested = ROOM_SEATS.includes(data.player) ? data.player : "";
         const suppliedPin = String(data.rejoinPin || "").toUpperCase();
-        const tokenSeat = ROOM_SEATS.find((seat) => MP.seatTokens.get(seat) === suppliedPin);
+        const tokenSeat = suppliedPin && ROOM_SEATS.find((seat) => MP.seatTokens.get(seat) === suppliedPin);
+        if (suppliedPin && !tokenSeat) {
+          send(conn, { type: "rejected", message: "That rejoin PIN does not match this room. Check your room code and PIN." });
+          return;
+        }
+        if (tokenSeat === MP.player) {
+          send(conn, { type: "rejected", message: "That is the host's seat. Continue in the original host tab; hosting cannot be moved with a guest rejoin PIN." });
+          return;
+        }
         const requestedSeat = tokenSeat || requested || ROOM_SEATS.find((seat) => !MP.claimedPlayers.has(seat));
         const reconnecting = !!tokenSeat;
-        if (!requestedSeat || MP.claimedPlayers.has(requestedSeat) || (!reconnecting && state.phase !== "lobby")) {
+        if (reconnecting && state.phase !== "lobby" && !PLAYER_NAMES.includes(requestedSeat)) {
+          send(conn, { type: "rejected", message: "That seat was not included in this deal. Ask the host to create a new room to add players." });
+          return;
+        }
+        if (!requestedSeat || (!reconnecting && MP.claimedPlayers.has(requestedSeat)) || (!reconnecting && state.phase !== "lobby")) {
           send(conn, { type: "rejected", message: requestedSeat && MP.claimedPlayers.has(requestedSeat)
             ? "That seat is already connected. Choose Any open seat, or close its other game tab first."
-            : state.phase === "lobby" ? "This table is full — all four seats are taken."
+            : state.phase === "lobby" ? "This table is full - all four seats are taken."
             : "The game has started. Use your rejoin PIN to reclaim your seat." });
           return;
         }
-        const pin = MP.seatTokens.get(requestedSeat) || randomToken();
+        // Revoke the old channel BEFORE closing it. Close/error/data callbacks
+        // may arrive late or synchronously and must not affect its replacement.
+        if (reconnecting) {
+          MP.connections.forEach((meta, oldConn) => {
+            if (oldConn === conn || meta.player !== requestedSeat) return;
+            MP.connections.delete(oldConn);
+            send(oldConn, { type: "rejected", message: "Your seat has been rejoined in another tab or device. Continue there." });
+            try { oldConn.close(); } catch (_) {}
+          });
+        }
+        const pin = reconnecting ? suppliedPin : randomToken();
         MP.seatTokens.set(requestedSeat, pin);
         const displayName = cleanDisplayName(data.displayName, state.displayNames?.[requestedSeat] || requestedSeat);
         MP.connections.get(conn).player = requestedSeat;
@@ -593,13 +669,17 @@
         }
       }
     });
-    conn.on("close", () => {
-      if (session !== MP.session || MP.role !== "host") return;
+    const releaseConnection = () => {
+      if (session !== MP.session || MP.role !== "host" || !MP.connections.has(conn)) return;
       const meta = MP.connections.get(conn);
-      if (meta?.player) MP.claimedPlayers.delete(meta.player);
       MP.connections.delete(conn);
+      if (meta?.player && ![...MP.connections.values()].some(other => other.player === meta.player)) {
+        MP.claimedPlayers.delete(meta.player);
+      }
       publishPresence();
-    });
+    };
+    conn.on("close", releaseConnection);
+    conn.on("error", releaseConnection);
   }
 
   function createRoom() {
@@ -619,9 +699,7 @@
     setViewer(player);
     enterOnlineLobby();
     state.displayNames[player] = MP.displayName;
-    try {
-      localStorage.setItem(`shithead-rejoin-${code}`, JSON.stringify({ roomCode: code, pin: MP.seatToken, displayName: MP.displayName, seat: MP.player }));
-    } catch (_) {}
+    saveRejoin();
     updateRoomUi();
     const session = MP.session;
     const peer = new Peer(peerIdForRoom(code));
@@ -660,6 +738,7 @@
     if (typeof Peer === "undefined") { showError("Online library did not load. Check your internet connection and refresh."); return; }
     const code = roomInput.value.trim().toUpperCase();
     if (code.length !== 6) { showError("Enter the six-character room code."); return; }
+    restoreRejoin(code);
     resetOnlineState();
     MP.role = "client";
     MP.connectionState = "joining";
@@ -706,13 +785,13 @@
           MP.displayName = data.displayName || MP.displayName;
           MP.seatToken = data.rejoinPin || MP.seatToken;
           rejoinPinInput.value = MP.seatToken;
+          pinRoomCode = code;
+          restoredPin = MP.seatToken;
           state.displayNames[data.player] = MP.displayName;
           MP.presentPlayers = new Set(data.players || [data.player]);
           if (data.displayNames) state.displayNames = clone(data.displayNames);
           applySnapshot(data.state);
-          try {
-            localStorage.setItem(`shithead-rejoin-${data.roomCode}`, JSON.stringify({ roomCode: data.roomCode, pin: MP.seatToken, displayName: MP.displayName, seat: MP.player }));
-          } catch (_) {}
+          saveRejoin();
           updateRoomUi();
           dialog.close();
         } else if (data.type === "state") {
@@ -752,15 +831,26 @@
   dialog.querySelector("#mpCreate").addEventListener("click", createRoom);
   dialog.querySelector("#mpJoin").addEventListener("click", joinRoom);
   dialog.querySelector("#mpClose").addEventListener("click", () => dialog.close());
-  roomInput.addEventListener("input", () => { roomInput.value = roomInput.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6); });
+  roomInput.addEventListener("input", () => {
+    roomInput.value = roomInput.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6);
+    if (pinRoomCode && pinRoomCode !== roomInput.value) {
+      rejoinPinInput.value = "";
+      restoredPin = "";
+      pinRoomCode = "";
+    }
+  });
+  rejoinPinInput.addEventListener("input", () => {
+    pinRoomCode = roomInput.value.trim().toUpperCase();
+    restoredPin = "";
+  });
 
   const renderBeforeMultiplayer = render;
   render = function renderWithMultiplayer() {
     renderBeforeMultiplayer();
     if (MP.role !== "local" && state.phase === "lobby") {
       statusText.textContent = MP.role === "host"
-        ? "Online lobby — add players or press START GAME when ready."
-        : "Online lobby — waiting for the host to start the deal.";
+        ? "Online lobby - add players or press START GAME when ready."
+        : "Online lobby - waiting for the host to start the deal.";
     }
     updateStartUi();
     schedulePublish();
@@ -776,3 +866,4 @@
   };
   if (linkedRoom) dialog.showModal();
 })();
+
