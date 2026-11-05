@@ -1,4 +1,4 @@
-const VERSION = "shithead-offline-0.9.51";
+const VERSION = "shithead-offline-0.9.52";
 const ASSETS = [
   "./",
   "./index.html",
@@ -112,3 +112,4 @@ self.addEventListener('message', event => {
     event.ports[0]?.postMessage({ready});
   })());
 });
+
