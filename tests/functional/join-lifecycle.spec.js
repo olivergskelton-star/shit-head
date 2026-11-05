@@ -86,6 +86,7 @@ async function startWithGuest(host,guest) {
    state.scores.Dan=7;
    state.phase='play';
    state.currentPlayer='Dan';
+   render();
    window.ShitHeadMultiplayer.publishState();
  });
  await guest.waitForFunction(()=>state.phase==='play' && state.scores.Dan===7);
@@ -194,3 +195,27 @@ test('switching rooms clears the previous room PIN',async({browser})=>{
  await context.close();
 });
 
+
+test('a refreshing tab keeps its own seat after another tab saves a different player',async({browser})=>{
+ const {context,host,guest}=await prepare(browser);
+ await guest.locator('#mpJoin').click();
+ await guest.waitForFunction(()=>window.ShitHeadMultiplayer.status.connectionState==='connected');
+ const code=await host.locator('#mpRoomDisplay').textContent();
+ const pin=await guest.locator('#mpRejoinPin').inputValue();
+ const other=await context.newPage();
+ await other.goto('/index.html');
+ await other.locator('.multiplayer-trigger').click();
+ await other.locator('#mpDisplayName').fill('Other player');
+ await other.locator('#mpRoomCode').fill(code);
+ await other.locator('#mpJoin').click();
+ await other.waitForFunction(()=>window.ShitHeadMultiplayer.status.connectionState==='connected');
+ await guest.goto(`/index.html?room=${code}`);
+ await expect(guest.locator('#mpDisplayName')).toHaveValue('Guest');
+ await expect(guest.locator('#mpRejoinPin')).toHaveValue(pin);
+ await guest.locator('#mpJoin').click();
+ await guest.waitForFunction(()=>window.ShitHeadMultiplayer.status.connectionState==='connected');
+ expect(await guest.evaluate(()=>state.viewer)).toBe('Dan');
+ expect(await other.evaluate(()=>window.ShitHeadMultiplayer.status.player)).toBe('Chris');
+ expect(await host.evaluate(()=>window.ShitHeadMultiplayer.status.players.length)).toBe(3);
+ await context.close();
+});

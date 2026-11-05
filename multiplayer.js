@@ -258,6 +258,16 @@
   if (linkedRoom) roomInput.value = linkedRoom;
   if (linkedPin) rejoinPinInput.value = linkedPin;
   if (linkedPin) dialog.querySelector('.multiplayer-advanced').open = true;
+  // A different player in another tab may have changed the shared name.
+  // On refresh, restore this tab's identity before matching its saved PIN.
+  if (linkedRoom && !linkedPin) {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(`shithead-rejoin-${linkedRoom}`) || "null");
+      if (saved?.roomCode === linkedRoom && saved.role === "client" && saved.pin && saved.displayName) {
+        displayNameInput.value = saved.displayName;
+      }
+    } catch (_) {}
+  }
   function restoreRejoin(code) {
     if (pinRoomCode && pinRoomCode !== code) {
       rejoinPinInput.value = "";
