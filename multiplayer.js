@@ -146,7 +146,9 @@
   }
   function enteredDisplayName() {
     const name = cleanDisplayName(displayNameInput.value || "Player");
-    try { localStorage.setItem('shithead-player-name', name); } catch {}
+    for (const storageName of ["sessionStorage", "localStorage"]) {
+      try { window[storageName].setItem('shithead-player-name', name); } catch (_) {}
+    }
     return name;
   }
   function enteredPin() {
@@ -237,7 +239,9 @@
   const rejoinInfo = dialog.querySelector("#mpRejoinInfo");
   const playersEl = dialog.querySelector("#mpPlayers");
   const inviteLink = dialog.querySelector('#mpInviteLink');
-  try { displayNameInput.value = localStorage.getItem('shithead-player-name') || ''; } catch {}
+  for (const storageName of ["sessionStorage", "localStorage"]) {
+    try { displayNameInput.value ||= window[storageName].getItem('shithead-player-name') || ''; } catch (_) {}
+  }
   dialog.querySelector('#mpCopyInvite').onclick = async () => {
     try {
       await navigator.clipboard.writeText(inviteLink.value);

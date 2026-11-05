@@ -209,11 +209,13 @@ test('a refreshing tab keeps its own seat after another tab saves a different pl
  await other.locator('#mpRoomCode').fill(code);
  await other.locator('#mpJoin').click();
  await other.waitForFunction(()=>window.ShitHeadMultiplayer.status.connectionState==='connected');
- await guest.goto(`/index.html?room=${code}`);
+ await guest.reload();
+ await guest.locator('.multiplayer-trigger').click();
  await expect(guest.locator('#mpDisplayName')).toHaveValue('Guest');
- await expect(guest.locator('#mpRejoinPin')).toHaveValue(pin);
+ await guest.locator('#mpRoomCode').fill(code);
  await guest.locator('#mpJoin').click();
  await guest.waitForFunction(()=>window.ShitHeadMultiplayer.status.connectionState==='connected');
+ await expect(guest.locator('#mpRejoinPin')).toHaveValue(pin);
  expect(await guest.evaluate(()=>state.viewer)).toBe('Dan');
  expect(await other.evaluate(()=>window.ShitHeadMultiplayer.status.player)).toBe('Chris');
  expect(await host.evaluate(()=>window.ShitHeadMultiplayer.status.players.length)).toBe(3);
