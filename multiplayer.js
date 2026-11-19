@@ -6,6 +6,9 @@
     roomReady: false,
     connectionState: "idle",
     joinTimer: null,
+    healthTimer: null,
+    lastHostSeen: 0,
+    healthSupported: false,
     role: "local",
     roomCode: "",
     player: "",
@@ -84,7 +87,7 @@
   }
 
   function sendAction(action) {
-    if (MP.role !== "client" || !MP.hostConnection?.open || !action || typeof action !== "object") return false;
+    if (MP.role !== "client" || MP.connectionState !== "connected" || !MP.hostConnection?.open || !action || typeof action !== "object") return false;
     send(MP.hostConnection, { type: "action", player: MP.player, action: clone(action) });
     return true;
   }
@@ -105,7 +108,7 @@
   function sendReaction(reaction) {
     if (!window.ShitHeadTableSocial?.isReaction(reaction)) return false;
     if (MP.role === 'host') return acceptReaction(MP.player, reaction);
-    if (MP.role !== 'client' || !MP.hostConnection?.open) return false;
+    if (MP.role !== 'client' || MP.connectionState !== 'connected' || !MP.hostConnection?.open) return false;
     send(MP.hostConnection, { type: 'reaction', player: MP.player, reaction });
     return true;
   }
@@ -210,17 +213,18 @@
           <input id="mpRejoinPin" maxlength="8" autocomplete="one-time-code" spellcheck="false" placeholder="For another device" />
         </label>
         </details>
-        <p id="mpError" class="multiplayer-error"></p>
         <div class="multiplayer-actions">
           <button id="mpCreate" class="multiplayer-create" type="button">Create game</button>
           <button id="mpJoin" class="multiplayer-join" type="button">Join game</button>
           <button id="mpClose" class="multiplayer-close" type="button">Close</button>
         </div>
       </div>
+      <p id="mpError" class="multiplayer-error" role="status"></p>
       <div id="mpRoomCard" class="room-card multiplayer-hidden">
         <div>ROOM</div>
         <div id="mpRoomDisplay" class="room-code"></div>
-        <p id="mpRoomStatus" class="room-status"></p>
+        <p id="mpRoomStatus" class="room-status" role="status"></p>
+        <button id="mpReconnect" type="button" class="multiplayer-hidden">Reconnect to game</button>
         <div class="room-invite"><button id="mpCopyInvite" type="button">Copy invite link</button><input id="mpInviteLink" aria-label="Guest invite link" readonly /><span id="mpInviteStatus" role="status"></span></div>
         <p id="mpRejoinInfo" class="room-rejoin-info"></p>
         <div id="mpPlayers" class="room-players"></div>
@@ -236,6 +240,7 @@
   const roomCard = dialog.querySelector("#mpRoomCard");
   const roomDisplay = dialog.querySelector("#mpRoomDisplay");
   const roomStatus = dialog.querySelector("#mpRoomStatus");
+  const reconnectButton = dialog.querySelector("#mpReconnect");
   const rejoinInfo = dialog.querySelector("#mpRejoinInfo");
   const playersEl = dialog.querySelector("#mpPlayers");
   const inviteLink = dialog.querySelector('#mpInviteLink');
@@ -340,7 +345,11 @@
       return pill;
     }));
 
-    if (MP.role === "host" && !MP.roomReady) {
+    reconnectButton.classList.toggle("multiplayer-hidden", MP.role !== "client");
+    reconnectButton.disabled = MP.connectionState === "joining";
+    if (MP.role === "client" && MP.connectionState === "stalled") {
+      roomStatus.textContent = "The host is not responding. Keep the host tab open, then use Reconnect to game. Your seat and PIN are retained.";
+    } else if (MP.role === "host" && !MP.roomReady) {
       roomStatus.textContent = "Connecting the room - wait before sharing the invite.";
     } else if (MP.role === "client" && MP.connectionState !== "connected") {
       roomStatus.textContent = "Joining the host - waiting for the table to accept you.";
@@ -432,6 +441,9 @@
     MP.roomReady = false;
     MP.connectionState = "idle";
     clearTimeout(MP.joinTimer); MP.joinTimer = null;
+    clearInterval(MP.healthTimer); MP.healthTimer = null;
+    MP.healthSupported = false;
+    MP.lastHostSeen = 0;
     clearTimeout(MP.publishTimer); MP.publishTimer = null;
     reactionTimes.clear();
     window.ShitHeadTableSocial?.clear();
@@ -631,6 +643,7 @@
           player: requestedSeat,
           displayName,
           rejoinPin: pin,
+          healthChecks: data.healthChecks === true,
           players: [...MP.claimedPlayers],
           displayNames: state.displayNames,
           state: snapshotState(),
@@ -641,6 +654,14 @@
 
       const meta = MP.connections.get(conn);
       if (!meta?.player || meta.player !== data.player) return;
+      if (data.type === "resync") {
+        send(conn, { type: "state", state: snapshotState() });
+        return;
+      }
+      if (data.type === "ping") {
+        send(conn, { type: "pong" });
+        return;
+      }
 
       if (data.type === 'reaction') {
         acceptReaction(meta.player, data.reaction);
@@ -725,12 +746,73 @@
     });
     peer.on("error", err => {
       if (!current()) return;
+      // A failed guest WebRTC channel must not mark healthy signalling offline.
+      if (peer.open && !peer.disconnected && !peer.destroyed) return;
       MP.roomReady = false;
       showError(err?.type === "unavailable-id"
         ? "That room code is already in use. Create another room."
         : "The room connection service is unavailable. Keep this tab open and try creating the room again.");
       updateRoomUi();
     });
+  }
+
+  function probeHost() {
+    if (MP.role !== "client" || !MP.healthSupported || MP.connectionState === "joining") return;
+    send(MP.hostConnection, { type: "ping", player: MP.player });
+  }
+
+  function startHealthChecks() {
+    clearInterval(MP.healthTimer);
+    MP.healthTimer = null;
+    if (!MP.healthSupported) return; // Older hosts still support manual reconnect.
+    const session = MP.session;
+    MP.lastHostSeen = Date.now();
+    MP.healthTimer = setInterval(() => {
+      if (MP.session !== session || MP.role !== "client") return;
+      if (document.hidden) return; // Background throttling is not a lost room.
+      if (Date.now() - MP.lastHostSeen >= 20000 && MP.connectionState === "connected") {
+        MP.connectionState = "stalled";
+        statusText.textContent = "Connection paused — reconnect to the host to continue.";
+        updateRoomUi();
+        if (!dialog.open) dialog.showModal();
+      }
+      probeHost();
+    }, 5000);
+    probeHost();
+  }
+
+  function noteHostResponse(type) {
+    MP.lastHostSeen = Date.now();
+    if (MP.connectionState === "stalled") {
+      if (type !== "state") {
+        send(MP.hostConnection, { type: "resync", player: MP.player });
+        return;
+      }
+      MP.connectionState = "connected";
+      showError();
+      updateRoomUi();
+      // Only a fresh authoritative snapshot enables play after an interruption.
+    }
+  }
+
+  // Give a suspended tab a fresh response window on return, without discarding
+  // its room or allowing an old tab to automatically steal a reclaimed seat.
+  function resumeConnectionCheck() {
+    if (document.hidden || MP.role !== "client" || !MP.healthSupported) return;
+    MP.lastHostSeen = Date.now();
+    probeHost();
+  }
+  document.addEventListener("visibilitychange", resumeConnectionCheck);
+  window.addEventListener("online", resumeConnectionCheck);
+
+  function reconnectGuest() {
+    if (MP.role !== "client" || MP.connectionState === "joining") return;
+    roomInput.value = MP.roomCode;
+    displayNameInput.value = MP.displayName;
+    rejoinPinInput.value = MP.seatToken;
+    pinRoomCode = MP.roomCode;
+    restoredPin = ""; // The active seat remains valid even if storage is unavailable.
+    joinRoom();
   }
 
   function joinRoom() {
@@ -759,15 +841,25 @@
       showError(message);
       if (!dialog.open) dialog.showModal();
     };
-    MP.joinTimer = setTimeout(() => failJoin("The host did not accept the connection. Keep the host's game tab open, check the room code, then try Join game again."), 20000);
+    let joinStage = "service";
+    MP.joinTimer = setTimeout(() => failJoin(
+      joinStage === "service"
+        ? "Could not reach the connection service. Check your internet connection and try Join game again."
+        : joinStage === "channel"
+          ? "Could not establish a connection to the host. Keep the host tab open, check the room code and both internet connections, then try again."
+          : "Connected to the host, but the game did not reply. Ask the host to return to their game tab, then try Join game again."
+    ), 20000);
     peer.on("open", () => {
       if (!current() || MP.hostConnection) return;
+      joinStage = "channel";
       const conn = peer.connect(peerIdForRoom(code), { reliable: true });
       MP.hostConnection = conn;
       conn.on("open", () => {
         if (!current() || MP.hostConnection !== conn) return;
+        joinStage = "welcome";
         send(conn, {
         type: "join",
+        healthChecks: true,
         player: MP.player,
         displayName: MP.displayName,
         rejoinPin: MP.seatToken,
@@ -776,6 +868,7 @@
       conn.on("data", (data) => {
         if (!current() || MP.hostConnection !== conn) return;
         if (!data || typeof data !== "object") return;
+        if (MP.connectionState !== "joining" && ["pong", "state", "presence", "action-result", "reaction"].includes(data.type)) noteHostResponse(data.type);
         if (data.type === "welcome") {
           clearTimeout(MP.joinTimer); MP.joinTimer = null;
           MP.connectionState = "connected";
@@ -792,6 +885,8 @@
           if (data.displayNames) state.displayNames = clone(data.displayNames);
           applySnapshot(data.state);
           saveRejoin();
+          MP.healthSupported = data.healthChecks === true;
+          startHealthChecks();
           updateRoomUi();
           dialog.close();
         } else if (data.type === "state") {
@@ -830,6 +925,7 @@
   startButton.addEventListener("click", startOnlineGame);
   dialog.querySelector("#mpCreate").addEventListener("click", createRoom);
   dialog.querySelector("#mpJoin").addEventListener("click", joinRoom);
+  reconnectButton.addEventListener("click", reconnectGuest);
   dialog.querySelector("#mpClose").addEventListener("click", () => dialog.close());
   roomInput.addEventListener("input", () => {
     roomInput.value = roomInput.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6);
