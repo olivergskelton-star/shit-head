@@ -69,6 +69,7 @@
   }
   function publishState() {
     if (MP.role === "local" || MP.suppressPublish) return;
+    if (MP.role === "client" && MP.connectionState !== "connected") return;
     const payload = { type: "state", state: snapshotState() };
     if (MP.role === "host") {
       broadcast(payload);
