@@ -1,0 +1,22 @@
+name: Setup connection comparison
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/setup-connection-comparison.yml'
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        ref: ['7e3a10185cd54631f7da3969bb2384cb56622341', 'ba06ffc572496ad53650cde380b049ece0a543b6']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/functional/three-browser.spec.js --repeat-each=10
