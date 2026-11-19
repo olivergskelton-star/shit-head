@@ -143,3 +143,32 @@ test('timeouts identify the failed connection stage',async({browser})=>{
     await context.close();
   }
 });
+
+test('a late setup snapshot cannot queue a second proposal that undoes a swap',async({browser})=>{
+  const {context,host,guest}=await prepare(browser);
+  await host.evaluate(()=>{
+    state.phase='setup';
+    state.setupReady={Oliver:false,Dan:false};
+    state.setupReadyOrder=[];
+    state.setupSelection=null;
+    render();
+    window.ShitHeadMultiplayer.publishState();
+  });
+  await guest.waitForFunction(()=>state.phase==='setup');
+  const old=await host.evaluate(()=>JSON.parse(JSON.stringify(state)));
+  const wanted=old.players.Dan.hand[0];
+  await host.evaluate(()=>{
+    const conn=window.__guestChannel,send=conn.send.bind(conn);
+    conn.send=data=>{if(data.type!=='state')send(data);};
+  });
+  await guest.evaluate(old=>{
+    selectSetupCard('Dan','hand',0);
+    selectSetupCard('Dan','table',0);
+    const conn=[...window.__peers.at(-1).connections.values()][0];
+    conn.emit('data',{type:'state',state:old});
+  },old);
+  // Allow the obsolete 40ms render-publication timer to fire if it still exists.
+  await guest.waitForTimeout(150);
+  expect(await host.evaluate(()=>state.players.Dan.faceUp[0])).toEqual(wanted);
+  await context.close();
+});

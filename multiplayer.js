@@ -68,6 +68,9 @@
     });
   }
   function publishState() {
+    // An immediate setup mutation replaces the queued render publication.
+    // Otherwise a late host snapshot can be sent back and undo the mutation.
+    clearTimeout(MP.publishTimer); MP.publishTimer = null;
     if (MP.role === "local" || MP.suppressPublish) return;
     if (MP.role === "client" && MP.connectionState !== "connected") return;
     const payload = { type: "state", state: snapshotState() };
