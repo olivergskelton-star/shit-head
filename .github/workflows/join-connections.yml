@@ -4,6 +4,7 @@ on:
     paths:
       - 'multiplayer*.js'
       - 'tests/functional/join-lifecycle.spec.js'
+      - 'tests/functional/connection-recovery.spec.js'
       - '.github/workflows/join-connections.yml'
 jobs:
   join-connections:
@@ -15,4 +16,4 @@ jobs:
           node-version: '22'
       - run: npm install
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test tests/functional/join-lifecycle.spec.js tests/functional/three-browser.spec.js tests/functional/four-player-room.spec.js
+      - run: npx playwright test tests/functional/connection-recovery.spec.js tests/functional/join-lifecycle.spec.js tests/functional/three-browser.spec.js tests/functional/four-player-room.spec.js
